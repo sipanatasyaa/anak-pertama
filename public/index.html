@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Anak Pertama · Bumbu Dapur</title>
+<link rel="icon" href="logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="stylesheet" href="style.css"/>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+
+
+const LOGO="logo.png";
+const TOKO={wa:"6285770797578",waTampil:"0857-7079-7578",email:"pecahkulit1978@gmail.com",
+  alamat:"Pasar Pecah Kulit, Jl. Mangga Besar IX, Jakarta Barat"};
+const REKENING=[
+  {bank:"BCA",no:"2991009541",nama:"Toto Juanda"},
+  {bank:"Mandiri",no:"1190012914436",nama:"Toto Juanda"}];
+const QRIS_IMG="qris.jpeg";         
+const ENDPOINT_PESANAN="/api/pesanan";
+const ENDPOINT_CHAT="/api/chat";            
+let PRODUK=[
+  [1,"Cabai Merah Besar",12000,"250g","bumbu","Cabai merah besar segar untuk aneka masakan."],
+  [2,"Cabai Merah Keriting",10000,"250g","bumbu","Cabai merah keriting untuk sambal dan tumisan."],
+  [3,"Cabai Hijau Besar",11000,"250g","bumbu","Cabai hijau besar untuk masakan rumahan."],
+  [4,"Cabai Rawit Merah",9000,"250g","bumbu","Cabai rawit merah dengan rasa pedas."],
+  [5,"Cabai Rawit Hijau",10000,"250g","bumbu","Cabai rawit hijau untuk sambal."],
+  [6,"Cabai Rawit Putih",50000,"250g","bumbu","Cabai rawit putih untuk kebutuhan dapur."],
+  [7,"Bawang Merah",18000,"250g","bumbu","Bawang merah pilihan."],
+  [8,"Bawang Bombay",13000,"250g","bumbu","Bawang bombay untuk tumisan dan sup."],
+  [9,"Daun Bawang",6000,"ikat","bumbu","Daun bawang segar."],
+  [10,"Daun Jeruk",8000,"100 g","bumbu","Daun jeruk untuk aroma masakan."],
+  [11,"Garam Refina",6000,"250 g","pelengkap","Garam untuk kebutuhan memasak."],
+  [12,"Jahe Gajah",12000,"250g","bumbu","Jahe gajah untuk bumbu dan minuman."],
+  [13,"Kentang",5000,"250g","bumbu","Kentang untuk aneka hidangan."],
+  [14,"Ketumbar",8000,"100 g","pelengkap","Ketumbar untuk bumbu masakan."],
+  [15,"Ladaku Merica Bubuk",4000,"sachet 6 g","pelengkap","Lada bubuk kemasan."],
+  [16,"Lemon Lokal",6000,"250g","bumbu","Lemon ijo segar."],
+  [17,"Sasa Penyedap",3000,"sachet 8 g","pelengkap","Penyedap rasa kemasan."],
+  [18,"Temu Kunci",15000,"250g","bumbu","Temu kunci untuk masakan tradisional."],
+  [19,"ABC Terasi Udang",14000,"bungkus 76 g","pelengkap","Terasi ABC kemasan."],
+  [20,"Tomat Hijau",10000,"250g","bumbu","Tomat hijau untuk sambal dan masakan."]
+  ].map(([id,nama,harga,sat,kat,desk])=>({
+  id,nama,harga,sat,kat,desk,
+  foto:"produk/"+nama.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".jpg"
+}));
+
+
+const fotoProduk=p=>p?.foto||("produk/"+String(p?.nama||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".jpg");
+function FotoMini({p}){const [gagal,setGagal]=useState(false);useEffect(()=>setGagal(false),[p?.id,p?.foto]);return gagal?<div className="mini-fallback">{String(p?.nama||'?').slice(0,1)}</div>:<img className="mini-foto" src={fotoProduk(p)} alt={p?.nama||'Foto produk'} onError={()=>setGagal(true)}/>}
+const rp=n=>"Rp "+n.toLocaleString("id-ID");
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+
+const IK={cari:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',tas:'<path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 0 1 6 0"/>',hati:'<path d="M12 20s-7-4.6-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.4-7 10-7 10z"/>',chat:'<path d="M4 5h16v11H9l-5 4V5z"/>'};
+function Ik({d,s=20}){return <svg viewBox="0 0 24 24" width={s} height={s} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{__html:d}}/>}
+const KAT=[["semua","Semua"],["bumbu","Bumbu Dapur"],["pelengkap","Bahan Pelengkap"]];
+const TAG=Object.fromEntries(KAT);
+
+function Kartu({p,qtyOf,tambah,kurang,favorit,toggleFavorit,lihatFoto}){
+  const [rusak,setRusak]=useState(false);
+  const fav=favorit.includes(p.id);
+  const q=qtyOf(p.id);
+  return <article className="pc"><span className="bd">{TAG[p.kat]}</span>
+    <button className={"hv"+(fav?" on":"")} aria-label={fav?"Hapus "+p.nama+" dari favorit":"Simpan "+p.nama+" ke favorit"} aria-pressed={fav} onClick={()=>toggleFavorit(p.id)}><Ik s={15} d={IK.hati}/></button>
+    <button type="button" className="ph ph-zoom" onClick={()=>!rusak&&lihatFoto(p)} disabled={rusak} aria-label={"Perbesar foto "+p.nama} title={"Lihat foto "+p.nama}>{rusak?<b>{p.nama.split(" ").map(w=>w[0]).slice(0,2).join("")}</b>:<img src={fotoProduk(p)} alt={p.nama} loading="lazy" onError={()=>setRusak(true)}/>}</button>
+    <h3>{p.nama}</h3><small>{p.desk}</small>
+    <div className="pr"><span><b>{rp(p.harga)}</b> <small>/ {p.sat}</small></span>
+      {q?<div className="qty"><button aria-label="Kurangi" onClick={()=>kurang(p.id)}>−</button><b>{q}</b><button aria-label="Tambah" onClick={()=>tambah(p)}>+</button></div>
+        :<button className="add" aria-label={"Tambah "+p.nama} onClick={()=>tambah(p)}>+</button>}</div></article>;
+}
+
+function Beranda({go,setKat,...r}){
+  const row=useRef();
+  const geser=d=>row.current&&row.current.scrollBy({left:d*440,behavior:"smooth"});
+  const semua=()=>{setKat("semua");go("produk")};
+  return <>
+    <section className="hero"><div><div className="eb">SEGAR. LENGKAP. SETIAP HARI.</div>
+      <h2>Langsung dari pasar. Segar untuk dapur Anda.</h2><button className="btn" onClick={semua}>BELANJA SEMUA PRODUK →</button></div>
+      <div className="plat"><img src={LOGO} alt="Logo AP Pasar Pecah Kulit Mangga Besar IX"/></div></section>
+    <div className="rail"><button className="pan l" aria-label="Geser kiri" onClick={()=>geser(-1)}>‹</button>
+      <div className="row" ref={row}>{PRODUK.slice(0,8).map(x=><Kartu key={x.id} p={x} {...r}/>)}</div>
+      <button className="pan r" aria-label="Geser kanan" onClick={()=>geser(1)}>›</button></div>
+    <div className="feat">{[["Bumbu Segar","Digiling dan dikemas rapi"],["Harga Grosir","Cocok untuk usaha kuliner"],["Bayar Mudah","Transfer bank atau QRIS"],["Kirim Jakarta","Atau ambil di toko"]].map(([a,b],i)=>
+      <div className="fx" key={a} style={{backgroundImage:"url(fitur/"+(i+1)+".jpg)"}}><b>{a}</b><span>{b}</span></div>)}</div>
+  </>;
+}
+
+function Produk({q,setQ,kat,setKat,...r}){
+  const ada=PRODUK.filter(x=>(kat==="semua"||x.kat===kat)&&x.nama.toLowerCase().includes(q.trim().toLowerCase()));
+  return <section className="pg"><div className="ttl"><h2>Produk Kami</h2><i/></div>
+    <form className="sb" onSubmit={e=>e.preventDefault()}><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari bumbu, pelengkap, garam" aria-label="Cari produk"/><button>Cari</button></form>
+    <div className="dk">{KAT.map(([k,l])=><button key={k} className={kat===k?"on":""} onClick={()=>setKat(k)}>{l}</button>)}</div>
+    {ada.length?<div className="gr">{ada.map(x=><Kartu key={x.id} p={x} {...r}/>)}</div>:<p style={{textAlign:"center"}}>Produk tidak ditemukan.</p>}
+  </section>;
+}
+
+function IkonKontak({tipe}){
+  if(tipe==="wa")return <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M13.601 2.326A7.854 7.854 0 0 0 8.008 0C3.58 0 0 3.58 0 8c0 1.405.366 2.78 1.062 3.992L0 16l4.117-1.08a7.964 7.964 0 0 0 3.89.99h.003c4.426 0 8.026-3.58 8.026-8a7.94 7.94 0 0 0-2.435-5.594ZM8.008 14.6a6.58 6.58 0 0 1-3.35-.916l-.24-.142-2.49.653.665-2.42-.157-.248A6.56 6.56 0 0 1 1.427 8c0-3.642 2.96-6.602 6.6-6.602a6.57 6.57 0 0 1 4.67 1.934 6.56 6.56 0 0 1 1.93 4.67c-.002 3.64-2.963 6.6-6.62 6.6Zm3.621-4.945c-.198-.1-1.176-.58-1.358-.646-.183-.066-.317-.1-.45.1-.133.2-.514.646-.63.78-.116.133-.233.15-.431.05-.198-.1-.837-.309-1.594-.985-.589-.525-.987-1.174-1.103-1.373-.116-.198-.012-.306.087-.405.089-.088.198-.232.298-.348.1-.116.133-.2.2-.332.066-.133.033-.25-.017-.348-.05-.1-.45-1.082-.616-1.481-.162-.39-.327-.337-.45-.343l-.384-.007a.735.735 0 0 0-.53.25c-.182.2-.696.679-.696 1.655s.713 1.92.812 2.052c.1.133 1.401 2.14 3.395 3.001.474.204.844.326 1.133.418.476.151.91.13 1.253.079.383-.057 1.176-.48 1.342-.944.166-.464.166-.861.116-.944-.05-.083-.183-.133-.382-.232Z"/></svg>;
+  if(tipe==="email")return <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="" loading="lazy"/>;
+  return <img src="https://upload.wikimedia.org/wikipedia/commons/a/aa/Google_Maps_icon_%282020%29.svg" alt="" loading="lazy"/>;
+}
+
+function Kontak(){
+  // Titik Google Maps mengikuti pin lapak yang sudah diperbaiki sebelumnya.
+  const peta="https://www.google.com/maps/search/?api=1&query=Toto+Juanda%2C+Pasar+Pecah+Kulit%2C+Mangga+Besar+IX%2C+Jakarta+Barat&query_place_id=ChIJHfxxFnf1aS4RTrfhhz_3Cp8";
+  const petaEmbed="https://www.google.com/maps?q=Toto+Juanda%2C+Pasar+Pecah+Kulit%2C+Mangga+Besar+IX%2C+Pinangsia%2C+Jakarta+Barat&output=embed";
+  const pesanWa="Halo, saya ingin bertanya tentang produk Anak Pertama.";
+  const urlWa="https://wa.me/"+TOKO.wa+"?text="+encodeURIComponent(pesanWa);
+  const [tersalin,setTersalin]=useState("");
+  const salin=async (teks,kunci)=>{
+    try{
+      if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(teks)}
+      else{
+        const el=document.createElement("textarea");el.value=teks;el.style.position="fixed";el.style.opacity="0";
+        document.body.appendChild(el);el.select();const berhasil=document.execCommand("copy");document.body.removeChild(el);
+        if(!berhasil)throw new Error("Tidak dapat menyalin");
+      }
+      setTersalin(kunci);
+      setTimeout(()=>setTersalin(k=>k===kunci?"":k),2300);
+    }catch(e){setTersalin("gagal");setTimeout(()=>setTersalin(""),2300)}
+  };
+  return <section className="bag contact-section"><div className="wrap">
+    <div className="judul contact-heading">
+      <span className="contact-eyebrow">ADA YANG INGIN DITANYAKAN?</span>
+      <h2>Kontak & Lokasi</h2>
+      <p>Hubungi Anak Pertama untuk bertanya tentang produk, pesanan, atau lokasi toko.</p>
+    </div>
+    <div className="kontak">
+      <article className="contact-card">
+        <div className="contact-card-top"><span className="contact-icon contact-icon-wa"><IkonKontak tipe="wa"/></span><span className="contact-kicker">Chat langsung</span></div>
+        <h3>WhatsApp</h3>
+        <p className="contact-description">Tanya produk atau pesan lebih mudah lewat chat.</p>
+        <strong className="contact-value">{TOKO.waTampil}</strong>
+        <div className="contact-actions">
+          <a className="contact-main-action" href={urlWa} target="_blank" rel="noopener noreferrer" aria-label="Chat Anak Pertama lewat WhatsApp">Mulai chat <span aria-hidden="true">↗</span></a>
+          <button className="contact-copy" type="button" onClick={()=>salin(TOKO.waTampil,"wa")} aria-label="Salin nomor WhatsApp">{tersalin==="wa"?"Tersalin ✓":"Salin"}</button>
+        </div>
+      </article>
+      <article className="contact-card">
+        <div className="contact-card-top"><span className="contact-icon contact-icon-email"><IkonKontak tipe="email"/></span><span className="contact-kicker">Kirim pesan</span></div>
+        <h3>Email</h3>
+        <p className="contact-description">Untuk pertanyaan atau keperluan lainnya melalui email.</p>
+        <strong className="contact-value">{TOKO.email}</strong>
+        <div className="contact-actions">
+          <a className="contact-main-action" href={"https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(TOKO.email)+"&su="+encodeURIComponent("Pertanyaan untuk Anak Pertama")} target="_blank" rel="noopener noreferrer" aria-label="Tulis email ke Anak Pertama melalui Gmail">Kirim email <span aria-hidden="true">↗</span></a>
+          <button className="contact-copy" type="button" onClick={()=>salin(TOKO.email,"email")} aria-label="Salin alamat email">{tersalin==="email"?"Tersalin ✓":"Salin"}</button>
+        </div>
+      </article>
+      <article className="contact-card contact-card-location">
+        <div className="contact-card-top"><span className="contact-icon contact-icon-map"><IkonKontak tipe="map"/></span><span className="contact-kicker">Kunjungi toko</span></div>
+        <h3>Lokasi Toko</h3>
+        <p className="contact-description">Temukan lapak Anak Pertama di Pasar Pecah Kulit.</p>
+        <strong className="contact-value contact-address">{TOKO.alamat}</strong>
+        <div className="contact-actions">
+          <a className="contact-main-action" href={peta} target="_blank" rel="noopener noreferrer" aria-label="Buka lokasi toko di Google Maps">Buka Google Maps <span aria-hidden="true">↗</span></a>
+        </div>
+      </article>
+    </div>
+    <div className="contact-map">
+      <div className="contact-map-heading"><div><h3>Temukan kami di peta</h3><p>Pasar Pecah Kulit, Mangga Besar IX, Jakarta Barat</p></div>
+        <a href={peta} target="_blank" rel="noopener noreferrer">Petunjuk arah <span aria-hidden="true">↗</span></a>
+      </div>
+      <iframe title="Peta lokasi Anak Pertama di Pasar Pecah Kulit" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={petaEmbed}/>
+    </div>
+    <div className="contact-feedback" role="status" aria-live="polite">{tersalin==="gagal"?"Gagal menyalin. Silakan salin secara manual.":""}</div>
+  </div></section>;
+}
+
+const api=async(url,opts={})=>{const token=sessionStorage.getItem('ap_token');const r=await fetch(url,{...opts,headers:{...(opts.headers||{}),...(token?{Authorization:'Bearer '+token}:{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Permintaan gagal');return d};
+ 
+function Akun({onLogin}){
+  const [daftar,setDaftar]=useState(false);
+  const [lihatPassword,setLihatPassword]=useState(false);
+  const [f,setF]=useState({
+    nama:'',hp:'',email:'',password:''
+  });
+  const [err,setErr]=useState('');
+
+  const [proses,setProses]=useState(false);
+  const kirim=async()=>{
+    if(proses)return;
+    setProses(true);
+    setErr('');
+    try{
+      if(daftar){
+        await api('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(f)});
+      }
+      const d=await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:f.email,password:f.password})});
+      sessionStorage.setItem('ap_token',d.token);
+      onLogin(d.user);
+    }catch(e){
+      setErr(daftar?'Pendaftaran atau masuk otomatis gagal: '+e.message:e.message);
+    }finally{setProses(false)}
+  };
+
+  return (
+    <section className="bag">
+      <div className="wrap">
+        <div className="panel akun-panel">
+          <h2>{daftar?'Daftar Pelanggan':'Masuk ke Anak Pertama'}</h2>
+
+          {daftar&&<>
+            <label>Nama lengkap</label>
+            <input
+              value={f.nama}
+              onChange={e=>setF({...f,nama:e.target.value})}
+            />
+            <label>WhatsApp</label>
+            <input
+              value={f.hp}
+              onChange={e=>setF({...f,hp:e.target.value})}
+            />
+          </>}
+
+          <label>Email</label>
+          <input
+            type="email"
+            value={f.email}
+            onChange={e=>setF({...f,email:e.target.value})}
+          />
+
+          <label>Password (minimal 8 karakter)</label>
+          <div className="akun-password">
+            <input
+              type={lihatPassword?'text':'password'}
+              value={f.password}
+              onChange={e=>setF({...f,password:e.target.value})}
+            />
+            <button
+              type="button"
+              className="akun-mata"
+              aria-label={lihatPassword?'Sembunyikan password':'Lihat password'}
+              aria-pressed={lihatPassword}
+              onClick={()=>setLihatPassword(!lihatPassword)}
+            >
+              
+{lihatPassword?(
+  <svg width="20" height="20" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="1.8"
+    strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 3l18 18"/>
+    <path d="M10.6 5.2A10.8 10.8 0 0 1 12 5c5.5 0 9.5 4.5 10 7-.3 1.5-1.8 3.6-3.9 5.1"/>
+    <path d="M6.1 6.1C3.9 7.6 2.5 10 2 12c.5 2.5 4.5 7 10 7 1.4 0 2.7-.3 3.9-.8"/>
+  </svg>
+):(
+  <svg width="20" height="20" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="1.8"
+    strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+)}
+
+            </button>
+          </div>
+
+          {err&&<p className="err">{err}</p>}
+
+          <div className="akun-actions">
+            <button className="btn hijau" disabled={proses} onClick={kirim}>
+              {proses?'Memproses...':daftar?'Daftar':'Masuk'}
+            </button>
+
+            <button
+              className="btn kecil putih"
+              onClick={()=>{
+                setDaftar(!daftar);
+                setLihatPassword(false);
+                setErr('');
+              }}
+            >
+              {daftar?'Sudah punya akun? Masuk':'Belum punya akun? Daftar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+function Riwayat(){
+  const [list,setList]=useState([]),[err,setErr]=useState(''),[loading,setLoading]=useState(true),[info,setInfo]=useState('');
+  const refresh=()=>{setLoading(true);setInfo('');api('/api/riwayat').then(rows=>{setList(rows);setErr('');setInfo('Data pesanan sudah diperbarui.')}).catch(e=>setErr(e.message)).finally(()=>setLoading(false))};
+  useEffect(refresh,[]);
+  return <section className="bag dashboard-page"><div className="wrap">
+    <div className="dashboard-heading"><div><span className="dashboard-kicker">AKUN PELANGGAN</span><h2>Pesanan Saya</h2><p>Lihat ringkasan dan perkembangan pesananmu di sini.</p></div><button className="btn kecil putih" disabled={loading} onClick={refresh}>{loading?"Memuat...":"Muat Ulang Pesanan"}</button></div>
+    <div className="dashboard-stats"><div className="dashboard-stat"><span>Total Pesanan</span><strong>{list.length}</strong></div><div className="dashboard-stat"><span>Sedang Diproses</span><strong>{list.filter(o=>['menunggu','menunggu_verifikasi','lunas','diproses'].includes(o.status)).length}</strong></div><div className="dashboard-stat"><span>Selesai</span><strong>{list.filter(o=>o.status==='selesai').length}</strong></div></div>
+    {err&&<p className="err" role="alert">{err}</p>}{!loading&&info&&<p className="refresh-info" role="status">{info}</p>}
+    {loading?<div className="dashboard-empty">Memuat pesanan...</div>:!list.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan yang kamu buat akan tampil di halaman ini.</p></div>:<div className="dashboard-list">{list.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><div className="dashboard-order-bottom"><span>Simulasi transaksi</span><strong>{rp(o.total)}</strong></div></article>)}</div>}
+  </div></section>;
+}
+
+function AdminPanel(){
+  const [orders,setOrders]=useState([]),[produk,setProduk]=useState([]),[err,setErr]=useState(''),[loading,setLoading]=useState(true),[tab,setTab]=useState('pesanan'),[form,setForm]=useState({nama:'',harga:'',sat:''}),[fotoBaru,setFotoBaru]=useState(null),[preview,setPreview]=useState(''),[saving,setSaving]=useState(false),[info,setInfo]=useState('');
+  const refresh=()=>{setLoading(true);Promise.all([api('/api/admin/pesanan'),api('/api/admin/produk')]).then(([a,b])=>{setOrders(a);setProduk(b);setErr('');setInfo('Data admin sudah diperbarui.')}).catch(e=>setErr(e.message)).finally(()=>setLoading(false))};
+  useEffect(refresh,[]);
+  const status=async(id,value)=>{try{await api('/api/admin/pesanan/'+encodeURIComponent(id)+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:value})});refresh()}catch(e){setErr(e.message)}};
+  const unggahFoto=async file=>{const fd=new FormData();fd.append('foto',file);const hasil=await api('/api/admin/upload-foto',{method:'POST',body:fd});return hasil.foto};
+  const edit=async(item,method,file=null)=>{if(saving)return;try{setSaving(true);setErr('');let data={...item};if(file)data.foto=await unggahFoto(file);await api('/api/admin/produk'+(item.id?'/'+item.id:''),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(method==='POST'){setForm({nama:'',harga:'',sat:''});setFotoBaru(null);setPreview('')}setInfo('Produk berhasil disimpan.');refresh()}catch(e){setErr(e.message)}finally{setSaving(false)}};
+  const pilihFoto=file=>{setFotoBaru(file||null);if(!file){setPreview('');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){setErr('Pilih foto JPG, PNG, atau WEBP maksimal 5 MB.');setFotoBaru(null);setPreview('');return;}setErr('');const r=new FileReader();r.onload=()=>setPreview(String(r.result));r.readAsDataURL(file)};
+  return <section className="bag dashboard-page"><div className="wrap">
+    <div className="dashboard-heading"><div><span className="dashboard-kicker">PENGELOLA TOKO</span><h2>Dashboard Admin</h2><p>Kelola pesanan dan katalog Anak Pertama dari satu tempat.</p></div><button className="btn kecil putih" disabled={loading} onClick={refresh}>{loading?"Memuat...":"Perbarui Data"}</button></div>
+    <div className="dashboard-stats"><div className="dashboard-stat"><span>Total Pesanan</span><strong>{orders.length}</strong></div><div className="dashboard-stat"><span>Perlu Ditinjau</span><strong>{orders.filter(o=>['menunggu','menunggu_verifikasi'].includes(o.status)).length}</strong></div><div className="dashboard-stat"><span>Total Produk</span><strong>{produk.length}</strong></div></div>
+    <div className="dashboard-tabs" role="tablist" aria-label="Menu admin"><button role="tab" aria-selected={tab==='pesanan'} className={tab==='pesanan'?'active':''} onClick={()=>setTab('pesanan')}>Pesanan ({orders.length})</button><button role="tab" aria-selected={tab==='produk'} className={tab==='produk'?'active':''} onClick={()=>setTab('produk')}>Kelola Produk ({produk.length})</button></div>
+    {err&&<p className="err" role="alert">{err}</p>}{!loading&&info&&<p className="refresh-info" role="status">{info}</p>}
+    {loading&&<div className="dashboard-empty">Memuat data...</div>}
+    {!loading&&tab==='pesanan'&&(!orders.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan pelanggan akan muncul di sini.</p></div>:<div className="dashboard-list">{orders.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong><p>{o.nama} · {o.hp}</p></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><div className="dashboard-order-bottom"><div><small>{o.alamat} · {o.metode}</small><strong>{rp(o.total)}</strong></div><div className="dashboard-order-actions"><label htmlFor={'status-'+o.id}>Ubah status</label><select id={'status-'+o.id} value={o.status} onChange={e=>status(o.id,e.target.value)}>{['menunggu','menunggu_verifikasi','lunas','diproses','selesai','ditolak','kadaluarsa'].map(x=><option key={x} value={x}>{x.replaceAll('_',' ')}</option>)}</select>{o.bukti&&<button className="btn kecil putih" onClick={async()=>{try{const r=await fetch('/api/admin/bukti/'+encodeURIComponent(o.id),{headers:{Authorization:'Bearer '+sessionStorage.getItem('ap_token')}});if(!r.ok)throw Error('Bukti tidak ditemukan');const u=URL.createObjectURL(await r.blob());window.open(u,'_blank');setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){setErr(e.message)}}}>Lihat Bukti</button>}</div></div></article>)}</div>)}
+    {!loading&&tab==='produk'&&<><div className="dashboard-product-form"><h3>Tambah Produk</h3><div className="dashboard-fields"><label>Nama produk<input placeholder="Contoh: Cabai Merah" value={form.nama} onChange={e=>setForm({...form,nama:e.target.value})}/></label><label>Harga (Rp)<input placeholder="12000" type="number" min="0" value={form.harga} onChange={e=>setForm({...form,harga:e.target.value})}/></label><label>Satuan<input placeholder="250g" value={form.sat} onChange={e=>setForm({...form,sat:e.target.value})}/></label></div><label className="foto-input-label">Foto produk (JPG/PNG/WEBP, maks. 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>pilihFoto(e.target.files[0])}/></label>{preview&&<img className="foto-preview" src={preview} alt="Pratinjau foto produk"/>}<button className="btn kecil" disabled={saving||!form.nama.trim()||!form.harga||!form.sat.trim()} onClick={()=>edit(form,'POST',fotoBaru)}>{saving?'Menyimpan...':'+ Tambah Produk'}</button></div><div className="dashboard-list">{produk.map(p=><article className="dashboard-product" key={p.id}><div className="dashboard-product-info"><FotoMini p={p}/><div><strong>{p.nama}</strong><p>{rp(p.harga)} / {p.sat}</p></div></div><div className="dashboard-product-actions"><button className="btn kecil putih" onClick={()=>{const nama=prompt('Nama',p.nama),harga=prompt('Harga',p.harga),sat=prompt('Satuan',p.sat);if(nama&&harga&&sat)edit({...p,nama,harga,sat},'PUT')}}>Edit</button><label className="btn kecil putih upload-edit">Ganti Foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const file=e.target.files[0];if(file)edit(p,'PUT',file);e.target.value=''}}/></label><button className="btn kecil putih" onClick={()=>{if(confirm('Hapus produk ini?'))api('/api/admin/produk/'+p.id,{method:'DELETE'}).then(refresh).catch(e=>setErr(e.message))}}>Hapus</button></div></article>)}</div></>}
+  </div></section>;
+}
+
+function Checkout({cart,total,selesai,go,user}){
+  const [f,setF]=useState({nama:user.nama,hp:user.hp,alamat:user.alamat||"",catatan:"",metode:"transfer",bank:0});
+  const [tahap,setTahap]=useState("checkout");
+  const [nominal,setNominal]=useState("");
+  const [rekeningPengirim,setRekeningPengirim]=useState("");
+  const [bankPengirim,setBankPengirim]=useState("BCA");
+  const [namaBankLain,setNamaBankLain]=useState("");
+  const kode=0;
+  const [err,setErr]=useState("");const [pesananTertunda,setPesananTertunda]=useState(null);const [hasil,setHasil]=useState(null);const [salin,setSalin]=useState(false);const [proses,setProses]=useState(false);
+  const set=(k,v)=>setF(o=>({...o,[k]:v}));
+  const bayar=f.metode==="transfer"?total+kode:total;
+  const rek=REKENING[f.bank];
+  const copy=t=>{navigator.clipboard&&navigator.clipboard.writeText(t);setSalin(true);setTimeout(()=>setSalin(false),1500)};
+
+  const lanjutSimulasi=()=>{
+    if(!f.nama.trim()||!f.hp.trim()){setErr("Isi nama dan nomor HP terlebih dahulu.");return}
+    setErr("");setNominal("");setRekeningPengirim("");setTahap("simulasi");window.scrollTo(0,0);
+  };
+  const kirim=async()=>{
+    if(proses)return;
+    if(f.metode==="qris" && (!/^\d+$/.test(nominal.trim()) || Number(nominal)!==bayar)){
+      setErr("Nominal simulasi QRIS harus sama dengan total tagihan, yaitu "+rp(bayar)+".");return;
+    }
+    const panjangRekening=bankPengirim==="BCA"?10:bankPengirim==="Mandiri"?13:null;
+    if(f.metode==="transfer" && bankPengirim==="Bank lain" && !namaBankLain.trim()){
+      setErr("Isi nama bank pengirim terlebih dahulu.");return;
+    }
+    const formatRekening=panjangRekening?new RegExp("^\\d{"+panjangRekening+"}$"): /^\d{8,20}$/;
+    if(f.metode==="transfer" && !formatRekening.test(rekeningPengirim.trim())){
+      setErr(panjangRekening?"Nomor rekening pengirim "+bankPengirim+" harus "+panjangRekening+" digit angka (simulasi).":"Untuk Bank lain, isi 8–20 digit nomor rekening contoh. Panjang sebenarnya berbeda antarbank.");return;
+    }
+    if(!f.nama.trim()||!f.hp.trim()){setErr("Isi nama dan nomor HP terlebih dahulu.");return}
+    setErr("");setProses(true);
+    const order={id:"AP-"+Date.now().toString(36).toUpperCase().slice(-6),nama:f.nama,hp:f.hp,alamat:f.alamat||"Ambil di toko",catatan:f.catatan,
+      metode:f.metode==="transfer"?"Transfer "+rek.bank:f.metode==="qris"?"QRIS":"Bayar di toko",
+      pesanan:cart.map(c=>c.nama+" x"+c.qty).join(", "),total:bayar,waktu:new Date().toLocaleString("id-ID")};
+    try{
+      let data=pesananTertunda;
+      if(!data){data=await api(ENDPOINT_PESANAN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nama:f.nama,hp:f.hp,alamat:f.alamat,catatan:f.catatan,metode:f.metode,bank:f.bank,items:cart.map(c=>({id:c.id,qty:c.qty}))})});setPesananTertunda(data)}
+      const selesaiSimulasi=await api('/api/pesanan/'+encodeURIComponent(data.id)+'/simulasi-bayar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metode:f.metode,nominal:f.metode==='qris'?Number(nominal):undefined,bankPengirim:f.metode==='transfer'?bankPengirim:undefined,namaBankLain:f.metode==='transfer'&&bankPengirim==='Bank lain'?namaBankLain:undefined,nomorRekening:f.metode==='transfer'?rekeningPengirim:undefined})});
+      const metodeTampil=f.metode==='transfer'?'Transfer '+rek.bank:f.metode==='qris'?'QRIS':'Bayar di toko';
+      setHasil({...order,id:data.id,total:data.total,hp:f.hp,metode:metodeTampil,kode:data.kode,status:selesaiSimulasi.status});selesai();if(f.alamat)api('/api/profil',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({alamat:f.alamat})}).catch(()=>{});setProses(false);
+    }catch(e){setErr(e.message||"Pesanan belum terkirim. Periksa koneksi lalu coba lagi.");setProses(false);return}
+  };
+
+ 
+if(hasil)return (
+  <section className="bag">
+    <div className="wrap sukses">
+      <img src={LOGO} alt="Logo Anak Pertama" width="90"/>
+
+      <h2>Transaksi Berhasil!</h2>
+
+      <p style={{marginTop:12}}>
+        Pesanan Anda berhasil dicatat melalui simulasi transaksi
+        website Anak Pertama.
+      </p>
+
+      <div className="panel" style={{
+        maxWidth:450,
+        margin:"20px auto",
+        textAlign:"left"
+      }}>
+        <p>Kode Pesanan: <b>{hasil.id}</b></p>
+        <p>Nama Pembeli: <b>{hasil.nama}</b></p>
+        <p>Metode Pembayaran: <b>{hasil.metode}</b></p>
+        <p>Total Transaksi: <b>{rp(hasil.total)}</b></p>
+        <p>Status simulasi: <b>Berhasil</b></p>
+      </div>
+
+      <p style={{fontSize:13,color:"#6B776D"}}>
+        Ini adalah simulasi untuk keperluan Penulisan Ilmiah; bukan konfirmasi penerimaan dana yang sebenarnya.
+      </p>
+
+      <button
+        className="btn"
+        style={{marginTop:20}}
+        onClick={()=>go("produk")}
+      >
+        Belanja Lagi
+      </button>
+    </div>
+  </section>
+);
+
+  if(tahap==="simulasi")return <section className="bag"><div className="wrap simulasi-wrap">
+    <div className="simulasi-heading"><span className="simulasi-step">LANGKAH 2 DARI 2</span><h2>Simulasi Pembayaran</h2>
+      <p>Ini hanya demonstrasi untuk Penulisan Ilmiah. Tidak ada dana yang dipindahkan atau pembayaran nyata yang diverifikasi.</p></div>
+    <div className="panel simulasi-panel">
+      <div className="simulasi-total"><span>Total tagihan</span><strong>{rp(bayar)}</strong></div>
+      <p className="simulasi-metode">Metode: <b>{f.metode==="qris"?"QRIS":f.metode==="transfer"?"Transfer "+rek.bank:"Bayar di toko"}</b></p>
+      {f.metode==="qris"&&<>
+        <div className="simulasi-qris-box">
+          <strong>QRIS Anak Pertama</strong>
+          <img className="simulasi-qris-img" src={QRIS_IMG} alt="QRIS toko Anak Pertama"/>
+          <p>Contoh tampilan QRIS. Untuk simulasi ini, jangan pindai atau kirim uang sungguhan.</p>
+        </div>
+        <label htmlFor="nominal-simulasi">Nominal pembayaran simulasi (Rp)</label>
+        <input id="nominal-simulasi" type="text" inputMode="numeric" autoComplete="off" placeholder="Masukkan nominal sesuai tagihan" value={nominal} onChange={e=>setNominal(e.target.value.replace(/\D/g,""))}/>
+        <small>Nominal harus sama dengan {rp(bayar)}.</small>
+      </>}
+      {f.metode==="transfer"&&<>
+        <div className="simulasi-rekening-tujuan">
+          <span>Rekening tujuan (toko)</span>
+          <strong>{rek.bank} · {rek.no}</strong>
+          <small>Atas nama {rek.nama}</small>
+          <b>Nominal transfer simulasi: {rp(bayar)}</b>
+        </div>
+        <label htmlFor="bank-pengirim">Bank pengirim (simulasi)</label>
+        <select id="bank-pengirim" value={bankPengirim} onChange={e=>{setBankPengirim(e.target.value);setRekeningPengirim("")}}>
+          <option value="BCA">BCA</option><option value="Mandiri">Mandiri</option><option value="Bank lain">Bank lain</option>
+        </select>
+        {bankPengirim==="Bank lain"&&<><label htmlFor="nama-bank-lain">Nama bank pengirim</label><input id="nama-bank-lain" type="text" placeholder="Contoh: BRI, BNI, CIMB Niaga" value={namaBankLain} maxLength={40} onChange={e=>setNamaBankLain(e.target.value)}/></>}
+        <label htmlFor="rekening-simulasi">Nomor rekening pengirim (simulasi)</label>
+        <input id="rekening-simulasi" type="text" inputMode="numeric" autoComplete="off" placeholder={bankPengirim==="BCA"?"10 digit nomor contoh":bankPengirim==="Mandiri"?"13 digit nomor contoh":"8–20 digit nomor contoh"} value={rekeningPengirim} maxLength={bankPengirim==="BCA"?10:bankPengirim==="Mandiri"?13:20} onChange={e=>setRekeningPengirim(e.target.value.replace(/\D/g,""))}/>
+        <small>Gunakan nomor contoh, bukan nomor rekening asli. Tidak perlu PIN, OTP, atau unggah bukti.</small>
+      </>}
+      {f.metode==="toko"&&<p className="simulasi-info">Pesanan akan dicatat sebagai simulasi. Pembayaran di toko tidak diproses secara online.</p>}
+      {err&&<p className="err" role="alert">{err}</p>}
+      <div className="simulasi-actions"><button type="button" className="btn kecil putih" disabled={proses} onClick={()=>{setErr("");setTahap("checkout")}}>Kembali</button>
+        <button type="button" className="btn hijau" disabled={proses} onClick={kirim}>{proses?"Menyimpan pesanan…":"Selesaikan Simulasi"}</button></div>
+    </div>
+  </div></section>;
+
+  if(!cart.length)return <section className="bag"><div className="wrap sukses"><h2>Keranjang kosong</h2><p style={{margin:"10px 0 20px"}}>Pilih produk dulu sebelum checkout.</p><button className="btn" onClick={()=>go("produk")}>Lihat produk</button></div></section>;
+
+  return <section className="bag"><div className="wrap">
+    <div className="judul"><h2>Checkout</h2></div>
+    <div className="co"><div>
+      <div className="panel"><h3>Data pembeli</h3>
+        <label>Nama lengkap</label><input type="text" value={f.nama} onChange={e=>set("nama",e.target.value)}/>
+        <label>Nomor HP</label><input type="tel" value={f.hp} onChange={e=>set("hp",e.target.value)}/>
+        <label>Alamat pengiriman (kosongkan jika ambil di toko)</label><textarea value={f.alamat} onChange={e=>set("alamat",e.target.value)}/>
+        <label>Catatan</label><textarea value={f.catatan} onChange={e=>set("catatan",e.target.value)}/></div>
+      <div className="panel"><h3>Pembayaran</h3>
+        <div className="pilih">{[["transfer","Transfer bank"],["qris","QRIS"],["toko","Bayar di toko"]].map(([k,l])=><button key={k} className={f.metode===k?"on":""} onClick={()=>set("metode",k)}>{l}</button>)}</div>
+        {f.metode==="transfer"&&<>
+          <div className="pilih" style={{marginTop:12}}>{REKENING.map((r,i)=><button key={r.bank} className={f.bank===i?"on":""} onClick={()=>set("bank",i)}>{r.bank}</button>)}</div>
+          <div className="rek"><small>Total simulasi transfer</small><div className="no">{rp(bayar)}</div>
+            <small>ke {rek.bank} a.n. {rek.nama}</small><div className="no">{rek.no}</div>
+            <button className="btn kecil putih" onClick={()=>copy(rek.no)}>{salin?"Tersalin":"Salin no. rekening"}</button></div>
+</>}
+        {f.metode==="qris"&&<><img className="qris" src={QRIS_IMG} alt="Kode QRIS toko"/><p style={{textAlign:"center"}}>QRIS ditampilkan sebagai contoh. Jangan melakukan pembayaran sungguhan. Nominal simulasi <b>{rp(bayar)}</b>.</p>
+</>}
+        {f.metode==="toko"&&<p style={{marginTop:12}}>Bayar tunai saat mengambil pesanan di {TOKO.alamat}.</p>}
+      </div></div>
+      <div className="panel" style={{position:"sticky",top:90}}><h3>Ringkasan</h3>
+        {cart.map(c=><div className="ring ring-produk" key={c.id}><FotoMini p={PRODUK.find(p=>p.id===c.id)||c}/><div className="ring-produk-info"><strong>{c.nama}</strong><small>{c.qty} × {rp(c.harga)}</small></div><strong>{rp(c.harga*c.qty)}</strong></div>)}
+        
+        <div className="ring t"><span>Total bayar</span><span>{rp(bayar)}</span></div>
+        {err&&<p className="err" role="alert">{err}</p>}
+        <button className="btn hijau" style={{width:"100%",marginTop:16}} disabled={proses} onClick={lanjutSimulasi}>
+{"Lanjut ke Simulasi Pembayaran"}
+</button></div>
+    </div></div></section>;
+}
+
+function Laci({buka,tutup,cart,total,tambah,kurang,hapus,checkout}){
+  if(!buka)return null;
+  const jml=cart.reduce((n,c)=>n+c.qty,0);
+  return <><div className="ov" onClick={tutup}/><aside className="cp" aria-label="Keranjang">
+    <header><h2>Keranjang ({jml})</h2><button className="rm" aria-label="Tutup" onClick={tutup}>×</button></header>
+    <div className="cl">{cart.length?cart.map(c=><div className="ci" key={c.id}><FotoMini p={PRODUK.find(p=>p.id===c.id)||c}/>
+      <div className="in"><b>{c.nama}</b><small>{c.sat} · {rp(c.harga*c.qty)}</small>
+        <div className="qty"><button aria-label="Kurangi" onClick={()=>kurang(c.id)}>−</button><b>{c.qty}</b><button aria-label="Tambah" onClick={()=>tambah(c)}>+</button></div></div>
+      <button className="rm" aria-label={"Hapus "+c.nama} onClick={()=>hapus(c.id)}>×</button></div>):<p style={{padding:"12px 0"}}>Keranjang masih kosong.</p>}</div>
+    {cart.length>0&&<div className="cf"><div className="rw"><span>{jml} produk</span><b>{rp(total)}</b></div>
+      <button className="pill" onClick={checkout}>Checkout</button><button className="pill lt" onClick={tutup}>Lanjut belanja</button></div>}
+  </aside></>;
+}
+
+
+function PanelFavorit({buka,tutup,favorit,toggleFavorit,tambah,lihatProduk}){
+  if(!buka)return null;
+  const daftar=PRODUK.filter(p=>favorit.includes(p.id));
+  return <><div className="ov" onClick={tutup}/>
+    <aside className="cp fav-panel" aria-label="Daftar produk favorit" role="dialog" aria-modal="true">
+      <header><h2>Favorit Saya ({daftar.length})</h2><button className="rm" aria-label="Tutup favorit" onClick={tutup}>×</button></header>
+      <div className="cl">
+        {daftar.length?daftar.map(p=><div className="ci fav-item" key={p.id}>
+          <img className="fav-thumb" src={fotoProduk(p)} alt={p.nama} onError={e=>{e.currentTarget.style.display="none"}}/>
+          <div className="in"><b>{p.nama}</b><small>{rp(p.harga)} / {p.sat}</small>
+            <button className="fav-add" onClick={()=>tambah(p)}>+ Tambah ke keranjang</button>
+          </div>
+          <button className="rm" aria-label={"Hapus "+p.nama+" dari favorit"} onClick={()=>toggleFavorit(p.id)}>×</button>
+        </div>):<div className="fav-empty"><Ik d={IK.hati} s={36}/><p>Belum ada produk favorit.</p><small>Tekan ikon hati pada produk yang kamu sukai.</small></div>}
+      </div>
+      <div className="cf"><button className="pill lt" onClick={lihatProduk}>Lihat produk</button></div>
+    </aside>
+  </>;
+}
+
+function jawab(q){
+  const s=q.toLowerCase();
+  const p=PRODUK.find(x=>x.nama.toLowerCase().split(" ").some(w=>w.length>3&&s.includes(w)&&!["bumbu","halus","pelengkap"].includes(w)))||PRODUK.find(x=>s.includes(x.nama.toLowerCase()));
+  if(/harga|berapa|biaya/.test(s)&&p)return p.nama+": "+rp(p.harga)+" per "+p.sat+".";
+  if(p&&!/bayar|jam|alamat|kirim/.test(s))return p.nama+" — "+p.desk+" Harga "+rp(p.harga)+" per "+p.sat+".";
+  if(/bayar|transfer|qris|rekening/.test(s))return "Bisa bayar lewat transfer bank ("+REKENING.map(r=>r.bank).join(", ")+"), QRIS, atau tunai di toko. Pilih saat checkout.";
+  if(/jam|buka|tutup/.test(s))return "Untuk memastikan jam buka terbaru, silakan hubungi kami melalui WhatsApp di "+TOKO.waTampil+".";
+  if(/alamat|lokasi|dimana|di mana/.test(s))return TOKO.alamat+". Petanya ada di halaman Kontak.";
+  if(/kirim|ongkir|antar/.test(s))return "Kami kirim ke area Jakarta. Isi alamat saat checkout, atau kosongkan untuk ambil di toko.";
+  if(/produk|jual|ada apa|daftar|harga/.test(s))return "Kami punya "+PRODUK.length+" produk: bumbu dapur dan pelengkap. Lihat halaman Produk atau tanya satu per satu.";
+  return "Saya belum paham pertanyaan itu. Coba tanya soal produk, harga, cara bayar, jam buka, atau alamat. Untuk hal lain hubungi "+TOKO.waTampil+".";
+}
+
+function Chat({buka,tutup}){
+  const [m,setM]=useState([{u:0,t:"Halo, saya asisten Anak Pertama. Mau tanya produk, harga, atau lokasi toko?"}]);
+  const [v,setV]=useState("");const [ngetik,setNgetik]=useState(false);const [mode,setMode]=useState("memeriksa");const ujung=useRef();
+  useEffect(()=>{ujung.current&&ujung.current.scrollIntoView()},[m,ngetik,buka]);
+  const kirim=async t=>{
+    t=(t||v).trim();if(!t||ngetik)return;setV("");
+    const baru=[...m,{u:1,t}];setM(baru);setNgetik(true);
+    let r=jawab(t);
+    if(ENDPOINT_CHAT){try{
+      const x=await fetch(ENDPOINT_CHAT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pesan:baru.slice(-10).map(a=>({role:a.u?"user":"assistant",content:a.t.slice(0,600)}))})});
+      const data=await x.json();
+      if(x.ok && data.reply){r=data.reply;setMode("ai");}
+      else if(x.status===503){setMode("otomatis");}
+      else {r=data.error||"Chatbot sedang mengalami gangguan. Silakan coba lagi.";setMode("gangguan");}
+    }catch(e){r="Koneksi chatbot sedang bermasalah. Silakan coba lagi.";setMode("gangguan");}}
+    else await new Promise(x=>setTimeout(x,700));
+    setNgetik(false);setM(o=>[...o,{u:0,t:r}]);
+  };
+  // Posisi popup hanya berubah saat header ditarik, bukan saat isi chat disentuh.
+  const popupRef=useRef(null);
+  const dragRef=useRef(null);
+  const [popupPos,setPopupPos]=useState(null);
+  const batas=(x,y)=>{
+    const el=popupRef.current;
+    const w=el?.offsetWidth||360,h=el?.offsetHeight||460;
+    return {x:Math.max(8,Math.min(x,window.innerWidth-w-8)),y:Math.max(8,Math.min(y,window.innerHeight-h-8))};
+  };
+  const mulaiGeser=e=>{
+    if(e.target.closest('button'))return;
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    const rect=popupRef.current?.getBoundingClientRect();
+    if(!rect)return;
+    dragRef.current={id:e.pointerId,dx:e.clientX-rect.left,dy:e.clientY-rect.top};
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const geserPopup=e=>{
+    if(!dragRef.current||dragRef.current.id!==e.pointerId)return;
+    setPopupPos(batas(e.clientX-dragRef.current.dx,e.clientY-dragRef.current.dy));
+  };
+  const selesaiGeser=e=>{
+    if(dragRef.current?.id===e.pointerId)dragRef.current=null;
+    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+  useEffect(()=>{
+    const aturUlang=()=>setPopupPos(pos=>pos?batas(pos.x,pos.y):null);
+    window.addEventListener('resize',aturUlang);
+    return ()=>window.removeEventListener('resize',aturUlang);
+  },[]);
+  if(!buka)return null;
+  return <div className="chat" ref={popupRef} style={popupPos?{left:popupPos.x,top:popupPos.y,right:'auto',bottom:'auto'}:{}} role="dialog" aria-label="Chat asisten">
+    <header className="chat-drag-handle" onPointerDown={mulaiGeser} onPointerMove={geserPopup} onPointerUp={selesaiGeser} onPointerCancel={selesaiGeser}><span>Asisten Anak Pertama <small style={{display:"block",fontSize:11,color:"#557565"}}>{mode==="ai"?"AI aktif":mode==="otomatis"?"Jawaban otomatis (AI belum aktif)":mode==="gangguan"?"Layanan sedang terganggu":"Asisten belanja"}</small></span><button aria-label="Tutup chat" onClick={tutup}>⌄</button></header>
+    
+<div className="pesan">
+  {m.map((a,i)=>(
+    <div key={i} className={"gel"+(a.u?" u":" m")}>
+      {a.u ? a.t : (
+        <div
+          className="chat-markdown"
+          dangerouslySetInnerHTML={{
+            __html: typeof marked !== "undefined" &&
+                    typeof DOMPurify !== "undefined"
+              ? DOMPurify.sanitize(
+                  marked.parse(String(a.t || ""), {
+                    breaks: true,
+                    gfm: true
+                  })
+                )
+              : String(a.t || "")
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+          }}
+        />
+      )}
+    </div>
+  ))}
+</div>
+
+      
+{ngetik&&<div className="ngetik" aria-label="Mengetik"><i/><i/><i/></div>}
+<div ref={ujung}/>
+
+    {m.length<2&&<div className="cepat">{["Daftar produk","Cara bayar","Lokasi toko"].map(q=><button key={q} onClick={()=>kirim(q)}>{q}</button>)}</div>}
+    <div className="kirim"><input value={v} maxLength={500} disabled={ngetik} placeholder="Mulai ngobrol…" onChange={e=>setV(e.target.value)} onKeyDown={e=>e.key==="Enter"&&kirim()}/><button onClick={()=>kirim()}>Kirim</button></div>
+  </div>;
+}
+
+function App(){
+  const [hal,setHal]=useState("home");
+  const [fotoTerbuka,setFotoTerbuka]=useState(null);
+  useEffect(()=>{if(!fotoTerbuka)return;const tekan=e=>{if(e.key==="Escape")setFotoTerbuka(null)};document.addEventListener("keydown",tekan);return()=>document.removeEventListener("keydown",tekan)},[fotoTerbuka]);
+  const [,setProdukVersi]=useState(0);
+  useEffect(()=>{api("/api/produk").then(rows=>{PRODUK=rows.map(p=>({...PRODUK.find(x=>x.id===p.id),...p}));setProdukVersi(v=>v+1)}).catch(()=>{})},[hal]);
+  const [user,setUser]=useState(null);
+  const tujuanSetelahLogin=React.useRef(null);
+  useEffect(()=>{if(sessionStorage.getItem("ap_token"))api("/api/me").then(setUser).catch(()=>sessionStorage.removeItem("ap_token"))},[]);
+  const [cart,setCart]=useState(()=>load("keranjang",[]));
+  const [favorit,setFavorit]=useState(()=>load("favorit_anak_pertama",[]));
+  const [bukaFavorit,setBukaFavorit]=useState(false);
+  const [laci,setLaci]=useState(false),[chat,setChat]=useState(false),[q,setQ]=useState(""),[kat,setKat]=useState("semua");
+  useEffect(()=>save("keranjang",cart),[cart]);
+  useEffect(()=>save("favorit_anak_pertama",favorit),[favorit]);
+  const toggleFavorit=id=>setFavorit(daftar=>daftar.includes(id)?daftar.filter(x=>x!==id):[...daftar,id]);
+  const go=h=>{if(h==="checkout"&&!user){tujuanSetelahLogin.current="checkout";h="akun";}else if(h!=="akun"){tujuanSetelahLogin.current=null;}setHal(h);setLaci(false);setBukaFavorit(false);window.scrollTo(0,0)};
+  const tambah=p=>setCart(c=>c.find(x=>x.id===p.id)?c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x):[...c,{...p,qty:1}]);
+  const kurang=id=>setCart(c=>c.flatMap(x=>x.id!==id?[x]:x.qty>1?[{...x,qty:x.qty-1}]:[]));
+  const hapus=id=>setCart(c=>c.filter(x=>x.id!==id));
+  const total=cart.reduce((s,c)=>s+c.harga*c.qty,0),jml=cart.reduce((s,c)=>s+c.qty,0);
+  const qtyOf=id=>(cart.find(c=>c.id===id)||{}).qty;
+  const prop={qtyOf,tambah,kurang,favorit,toggleFavorit,lihatFoto:setFotoTerbuka};
+  return <div className={"stage"+(hal==="home"?"":" solo")}>
+    {hal==="home"&&<aside className="side"><div className="eyb">01<i/>BELANJA BUMBU</div>
+      <h1>Rasa Asli yang <em>Segar</em> Setiap Hari.</h1><div className="orn"><i/>✦<i/></div>
+      <p>Bumbu dapur dan pelengkap pilihan dari Pasar Pecah Kulit, Mangga Besar IX. Pilih, bayar lewat transfer atau QRIS, kami siapkan.</p>
+      <div className="stat3">{[[PRODUK.length,"Produk"],["QRIS","& Transfer"],["Jakarta","Area kirim"]].map(([a,b])=><div key={b}><b>{a}</b><span>{b}</span></div>)}</div></aside>}
+    {fotoTerbuka&&<div className="foto-lightbox" role="presentation" onClick={()=>setFotoTerbuka(null)}>
+      <div className="foto-lightbox-dialog" role="dialog" aria-modal="true" aria-label={"Foto produk "+fotoTerbuka.nama} onClick={e=>e.stopPropagation()}>
+        <button type="button" className="foto-lightbox-close" onClick={()=>setFotoTerbuka(null)} aria-label="Tutup foto">×</button>
+        <img src={fotoProduk(fotoTerbuka)} alt={fotoTerbuka.nama}/>
+        <div className="foto-lightbox-name">{fotoTerbuka.nama}</div>
+      </div>
+    </div>}
+    <div className="card">
+      <header className="nav">
+        <button className="brand" onClick={()=>go("home")}><img src={LOGO} alt=""/><span><b>Anak Pertama</b><small>PASAR PECAH KULIT</small></span></button>
+        <nav className="links">{[["home","Beranda"],["produk","Produk"],["kontak","Kontak"]].map(([k,l])=><button key={k} className={hal===k?"on":""} onClick={()=>go(k)}>{l}</button>)}</nav>
+        <div className="nav-account">
+          <button className="btn kecil putih" onClick={()=>go(user?(user.role==='admin'?'admin':'riwayat'):'akun')}>{user?(user.role==='admin'?'Admin':'Pesanan Saya'):'Masuk'}</button>
+          {user&&<button className="btn kecil putih" onClick={()=>{api('/api/logout',{method:'POST'}).catch(()=>{});sessionStorage.removeItem('ap_token');setUser(null);go('home')}}>Keluar</button>}
+        </div>
+        <button className="ic" aria-label="Cari produk" onClick={()=>go("produk")}><Ik d={IK.cari}/></button>
+        <button className="ic" aria-label={"Favorit, "+favorit.length+" produk"} onClick={()=>{setLaci(false);setBukaFavorit(true)}}><Ik d={IK.hati}/>{favorit.length>0&&<i>{favorit.length}</i>}</button>
+        <button className="ic" aria-label="Keranjang" onClick={()=>setLaci(true)}><Ik d={IK.tas}/>{jml>0&&<i>{jml}</i>}</button>
+      </header>
+      <main>
+        {hal==="home"&&<Beranda go={go} setKat={setKat} {...prop}/>}
+        {hal==="produk"&&<Produk q={q} setQ={setQ} kat={kat} setKat={setKat} {...prop}/>}
+        {hal==="kontak"&&<Kontak/>}
+        {hal==="sumber"&&<section style={{padding:'32px 24px',maxWidth:850,margin:'auto'}}>
+          <h2>Sumber Gambar Produk</h2>
+          <p>Halaman ini mencantumkan tautan referensi gambar produk yang dikumpulkan untuk website Anak Pertama. Sebagian tautan menuju gambar langsung atau hasil Google Images, bukan halaman pemilik atau informasi lisensi. Pencantuman tautan tidak berarti izin penggunaan telah diperoleh.</p>
+          <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr><th style={{padding:12,borderBottom:'1px solid #ccc'}}>Foto</th><th style={{padding:12,borderBottom:'1px solid #ccc'}}>Nama file</th><th style={{padding:12,borderBottom:'1px solid #ccc'}}>Sumber asli / lisensi</th></tr></thead><tbody>
+          {DAFTAR_FOTO_SUMBER.map(n=><tr key={n}><td style={{padding:10,borderBottom:'1px solid #eee'}}><img src={'/produk/'+n} alt={n.replace(/\.[^.]+$/,'').replace(/-/g,' ')} style={{width:66,height:55,objectFit:'cover',borderRadius:6}}/></td><td style={{padding:10,borderBottom:'1px solid #eee'}}>{n}</td><td style={{padding:10,borderBottom:'1px solid #eee'}}>{SUMBER_GAMBAR[n] ? <a href={SUMBER_GAMBAR[n]} target="_blank" rel="noopener noreferrer" style={{color:"#17633f",textDecoration:"underline",overflowWrap:"anywhere"}} aria-label={"Buka referensi gambar "+n}>Lihat sumber ↗</a> : "Sumber belum dicantumkan"}</td></tr>)}
+          </tbody></table></div>
+        </section>}
+        {hal==="checkout"&&user&&user.role==='user'&&<Checkout cart={cart} total={total} go={go} user={user} selesai={()=>setCart([])}/>}
+        {hal==="akun"&&<Akun onLogin={u=>{const tujuan=u.role==='admin'?'admin':(tujuanSetelahLogin.current==='checkout'&&cart.length?'checkout':'home');tujuanSetelahLogin.current=null;setUser(u);setHal(tujuan);setLaci(false);setBukaFavorit(false);window.scrollTo(0,0)}}/>}
+        {hal==="riwayat"&&user?.role==='user'&&<Riwayat/>}
+        {hal==="admin"&&user?.role==='admin'&&<AdminPanel/>}
+      </main>
+      <section className="mobile-store-info" aria-label="Informasi Toko Anak Pertama">
+        <h3>Rasa Asli yang Segar Setiap Hari.</h3>
+        <p>Bumbu dapur dan pelengkap pilihan dari Pasar Pecah Kulit, Mangga Besar IX. Pilih produk, lalu lakukan pemesanan melalui website.</p>
+        <div className="store-info-meta">QRIS &amp; Transfer · Pasar Pecah Kulit, Jakarta</div>
+      </section>
+      <footer className="ft2"><span>Anak Pertama · PASAR PECAH KULIT MANGGA BESAR IX</span><button onClick={()=>go("sumber")} style={{background:"none",border:0,textDecoration:"underline",cursor:"pointer",color:"inherit"}}>Sumber Gambar</button><span>{TOKO.waTampil} · {TOKO.email}</span></footer>
+    </div>
+    <PanelFavorit buka={bukaFavorit} tutup={()=>setBukaFavorit(false)} favorit={favorit} toggleFavorit={toggleFavorit} tambah={tambah} lihatProduk={()=>go("produk")}/>
+    <Laci buka={laci} tutup={()=>setLaci(false)} cart={cart} total={total} tambah={tambah} kurang={kurang} hapus={hapus} checkout={()=>go("checkout")}/>
+    <button className="fab" aria-label="Chat dengan asisten" onClick={()=>setChat(c=>!c)}>{chat?"×":<Ik s={24} d={IK.chat}/>}</button>
+    <Chat buka={chat} tutup={()=>setChat(false)}/>
+  </div>;
+}
+const SUMBER_GAMBAR = {
+  "cabai-merah-besar.jpg": "https://www.google.com/imgres?imgurl=https%3A%2F%2Fimage.astronauts.cloud%2Fproduct-images%2F2026%2F7%2FCabeMerahBesar1d7b2_c361baf3-9288-45b8-b0e9-bb78e1395427_900x900.png&tbnid=QJFHBp1CZ0b8kM&vet=1&imgrefurl=https%3A%2F%2Fwww.astronauts.id%2Fp%2Fcabe-merah-besar-astro-farm-100gram-36437&docid=lgLw_dBsCM2_XM&w=900&h=900&itg=1&source=sh%2Fx%2Fim%2Fm1%2F2&kgs=e67c8a1adb3acbd4&shem=epsd1%2Cnisbtsa2%2Cnisbtsal%2Crimspwouoe",
+  "cabai-merah-keriting.jpg": "https://share.google/mjX7ZrkCikgZV8cCn",
+  "cabai-hijau-besar.jpg": "https://share.google/n3greEDNlRjvheYjM",
+  "cabai-rawit-merah.jpg": "https://www.google.com/imgres?imgurl=https%3A%2F%2Fmutiarabumi.com%2Fassets%2Fimages%2Fkategori%2F1Cover28_73ad7eb7-414c-4e1a-9634-186188bd1232_900x900.png&tbnid=EdV08Ax3fewVvM&vet=1&imgrefurl=https%3A%2F%2Fmutiarabumi.com%2Fkategori%2Fcabe-rawit&docid=6QRP-9592BehlM&w=900&h=900&hl=id-ID&source=sh%2Fx%2Fim%2Fm1%2F4&kgs=922c569f6eb1e97d&shem=epsd1%2Cnisbtsa2%2Cnisbtsal%2Crimspwouoe",
+  "cabai-rawit-hijau.jpg": "https://share.google/9t8qXjVjY0XzYnlt1",
+  "cabai-rawit-putih.jpg": "https://sipasar.web.id/uploads/produk/69345da4bec91_1765039524.jpeg",
+  "daun-jeruk.jpg": "https://png.pngtree.com/thumb_back/fh260/background/20220531/pngtree-kaffir-lime-leaves-citrus-hystrix-dc-orange-produce-photo-image_27932624.jpg",
+  "temu-kunci.jpg": "https://down-id.img.susercontent.com/file/677835c08e048460fd701585e16330da",
+  "jahe-gajah.jpg": "https://png.pngtree.com/png-vector/20240823/ourmid/pngtree-ginger-rhizome-and-sliced-with-leaves-png-image_13598130.png",
+  "tomat-hijau.jpg": "https://media.istockphoto.com/id/1081952752/id/foto/tomat-matang-hijau-di-latar-belakang-putih.jpg?s=612x612&w=0&k=20&c=C6s_TFsqUk7U2nXUxoWq31s1rseFkJTol1sLiCfM_pA=",
+  "bawang-bombay.jpg": "https://res.cloudinary.com/dk0z4ums3/image/upload/v1621837004/attached_image/berbagai-nutrisi-di-balik-manfaat-bombay.jpg",
+  "garam-refina.jpg": "https://filebroker-cdn.lazada.co.id/kf/Sb804adcad27a47ec9dbc58724aa4a038z.jpg",
+  "daun-bawang.jpg": "https://png.pngtree.com/png-vector/20250622/ourmid/pngtree-scallion-isolated-on-a-transparent-background-png-image_16574396.png",
+  "sasa-penyedap.jpg": "https://down-tw.img.susercontent.com/file/b2558c2d8bdf1fbea4faae75e7c1e092",
+  "kentang.jpg": "https://hawagym.com/wp-content/uploads/2018/07/manfaat-kentang-untuk-kesehatan-by-hawagym-indonesia.jpg",
+  "ladaku-merica-bubuk.jpg": "https://down-id.img.susercontent.com/file/id-11134207-7rasi-m4vm5ucdbb7mf2",
+  "abc-terasi-udang.jpg": "https://down-id.img.susercontent.com/file/id-11134207-7rbk5-m7vq7jgbxkeoa3",
+  "lemon-lokal.jpg": "https://png.pngtree.com/png-clipart/20250104/original/pngtree-green-lemon-with-slice-isolated-on-white-background-clipart-illustration-png-image_20009796.png",
+  "bawang-merah.jpg": "https://png.pngtree.com/png-clipart/20240812/original/pngtree-shallot-isolated-on-transparent-background-png-image_15756454.png",
+  "ketumbar.jpg": "https://media.istockphoto.com/id/1398075689/id/foto/tumpukan-biji-ketumbar-kering-di-latar-belakang-putih-tampilan-atas.jpg?s=170667a&w=0&k=20&c=f_QPbiB6ZM48_KMNFjAabLsMcnzLNHY4UZY8H_6qPe4="
+};
+const DAFTAR_FOTO_SUMBER = ["abc-terasi-udang.jpg", "bawang-bombay.jpg", "bawang-merah.jpg", "cabai-hijau-besar.jpg", "cabai-merah-besar.jpg", "cabai-merah-keriting.jpg", "cabai-rawit-hijau.jpg", "cabai-rawit-merah.jpg", "cabai-rawit-putih.jpg", "daun-bawang.jpg", "daun-jeruk.jpg", "garam-refina.jpg", "jahe-gajah.jpg", "kentang.jpg", "ketumbar.jpg", "ladaku-merica-bubuk.jpg", "lemon-lokal.jpg", "sasa-penyedap.jpg", "temu-kunci.jpg", "tomat-hijau.jpg"];
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
