@@ -335,24 +335,24 @@ html,body{overflow-x:hidden;}
 /* Formulir simulasi pembayaran */
 .simulasi-wrap{max-width:700px;margin:auto}.simulasi-heading{text-align:center;margin:4px 0 22px}
 .simulasi-heading h2{font-size:clamp(1.6rem,3vw,2.2rem);color:var(--g9);margin:8px 0}
-.simulasi-heading p{color:var(--mut);font-size:.9rem}.simulasi-step{color:var(--g7);font-size:.72rem;letter-spacing:.12em;font-weight:700}
+.simulasi-heading p{color:var(--mut);font-size:.9rem}.simulasi--step{color:var(--g7);font-size:.72rem;letter-spacing:.12em;font-weight:700}
 .simulasi-panel{padding:clamp(20px,4vw,32px)}.simulasi-total{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--ln)}
 .simulasi-total strong{color:var(--g9);font-size:1.5rem}.simulasi-metode{margin:16px 0}
 .simulasi-info{padding:14px;border-radius:10px;background:var(--g1);font-size:.9rem;margin-bottom:18px}
 .simulasi-panel input{display:block;width:100%;padding:12px 14px;border:1.5px solid var(--ln);border-radius:10px;font:inherit}
 .simulasi-panel input:focus{border-color:var(--g7)}.simulasi-panel small{display:block;color:var(--mut);margin-top:8px}
 .simulasi-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;flex-wrap:wrap}
-@media(max-width:600px){.simulasi-total{align-items:flex-start;flex-direction:column;gap:4px}.simulasi-actions button{flex:1}.simulasi-panel{padding:18px}}
+@media(max-width:600px){.total{align-items:flex-start;flex-direction:column;gap:4px}.simulasi-actions button{flex:1}.simulasi-panel{padding:18px}}
 
 /* Penyempurnaan simulasi QRIS dan transfer bank */
-.simulasi-qris-box{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 14px;margin:18px 0;background:#f5f8f2;border:1px solid #d9e5d5;border-radius:16px;text-align:center}
-.simulasi-qris-img{display:block;width:min(250px,100%);height:auto;object-fit:contain;background:white;border-radius:12px;padding:10px}
-.simulasi-qris-box p{font-size:.82rem;color:#526653;max-width:360px}
-.simulasi-rekening-tujuan{display:flex;flex-direction:column;gap:5px;padding:18px;margin:18px 0;background:#f5f8f2;border:1px solid #d9e5d5;border-radius:14px;overflow-wrap:anywhere}
-.simulasi-rekening-tujuan span,.simulasi-rekening-tujuan small{color:#526653;font-size:.8rem}
-.simulasi-rekening-tujuan strong{font-size:1.1rem;color:#1e4a2e}
-.simulasi-rekening-tujuan b{margin-top:8px}
-.simulasi-panel select{display:block;width:100%;padding:11px 12px;border:1.5px solid #d8ded6;border-radius:10px;background:#fff;font:inherit}
+.qris-box{display:flex;flex-direction:column;align-items:center;gap:10px;padding:20px 14px;margin:18px 0;background:#f5f8f2;border:1px solid #d9e5d5;border-radius:16px;text-align:center}
+.qris-img{display:block;width:min(250px,100%);height:auto;object-fit:contain;background:white;border-radius:12px;padding:10px}
+.qris-box p{font-size:.82rem;color:#526653;max-width:360px}
+.rekening-tujuan{display:flex;flex-direction:column;gap:5px;padding:18px;margin:18px 0;background:#f5f8f2;border:1px solid #d9e5d5;border-radius:14px;overflow-wrap:anywhere}
+.rekening-tujuan span,.rekening-tujuan small{color:#526653;font-size:.8rem}
+.rekening-tujuan strong{font-size:1.1rem;color:#1e4a2e}
+.rekening-tujuan b{margin-top:8px}
+.panel select{display:block;width:100%;padding:11px 12px;border:1.5px solid #d8ded6;border-radius:10px;background:#fff;font:inherit}
 
 /* Foto produk di keranjang, checkout, dan dashboard admin */
 .mini-foto,.mini-fallback{width:58px;height:58px;min-width:58px;object-fit:cover;border-radius:11px;background:var(--g1);display:grid;place-items:center;color:var(--g9);font-weight:700}
@@ -459,3 +459,94 @@ html,body{overflow-x:hidden;}
 .chat-drag-handle{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 .chat-drag-handle:active{cursor:grabbing}
 .chat-drag-handle button{cursor:pointer;touch-action:manipulation}
+
+/* Alur QRIS pengujian dan e-receipt */
+.qris-demo{width:175px;height:175px;margin:12px auto;border:3px dashed #b8c8bb;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f4f8f2;color:#245338;font-size:2rem;font-weight:800;letter-spacing:.12em}.qris-demo small{font-size:.8rem}.qris-clock{text-align:center;font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;color:#9b352c;margin:12px 0}.receipt-note{font-size:.78rem;color:#68766b;margin:8px 0}
+
+/* Checkout: detail rekening/QR baru muncul di langkah pembayaran */
+.metode-hint{margin-top:12px;font-size:.83rem;color:var(--mut);line-height:1.6}
+.qris-box .qris-img{display:block;width:min(225px,100%);height:auto;margin:15px auto;border-radius:10px;background:#fff;padding:10px;object-fit:contain}
+
+/* E-receipt modern portrait — independent from legacy receipt selectors */
+.ap-modern-overlay{position:fixed!important;inset:0!important;z-index:10000!important;background:rgba(20,31,25,.64)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:16px!important;overflow-y:auto!important}
+.ap-modern-receipt,.ap-modern-receipt *{box-sizing:border-box}
+.ap-modern-receipt{position:relative;width:min(490px,100%)!important;max-height:calc(100dvh - 32px)!important;overflow-y:auto!important;flex:none;background:#fff;color:#152c1e;border-radius:22px;padding:24px 25px 22px;font:14px/1.45 'DM Sans',sans-serif;box-shadow:0 24px 85px #06170d55}
+.ap-receipt-close{position:absolute;right:15px;top:12px;font-size:28px;line-height:1;color:#182d21;z-index:2;padding:3px 8px}
+.ap-receipt-brand{display:flex;align-items:center;gap:13px;padding:6px 25px 14px 0;border-bottom:1px solid #e4ebe4}
+.ap-brand-mark{width:66px;height:66px;flex:none;border-radius:15px;background:#fff7d9;display:grid;place-items:center;overflow:hidden}
+.ap-brand-mark img{width:100%;height:100%;object-fit:contain}
+.ap-brand-copy{border-left:2px solid #65956b;padding-left:12px;min-width:0}.ap-brand-copy h2{font:800 clamp(20px,5vw,25px)/1.1 'DM Sans',sans-serif;color:#10462b;margin:0 0 5px}.ap-brand-copy p{font-size:11px;color:#47574b;margin:0}.ap-brand-copy .ap-brand-contact{font-size:10px;color:#607167;line-height:1.35;margin-top:3px}
+.ap-receipt-success{text-align:center;padding:18px 0 19px}.ap-success-icon{width:58px;height:58px;margin:0 auto 11px;border-radius:50%;display:grid;place-items:center;background:#5bc733;color:white;font:700 38px/1 sans-serif}.ap-pending-icon{background:#e8a83c;font-size:28px}.ap-receipt-success h3{font:800 23px/1.2 'DM Sans',sans-serif;color:#103e26;margin:0 0 6px}.ap-receipt-success p{color:#58615a;font-size:12px;margin:0}
+.ap-receipt-meta{background:#f2f8f0;border-radius:16px;padding:13px 15px;margin-bottom:18px}.ap-receipt-meta>div{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:34px;font-size:12px}.ap-receipt-meta>div:first-child{grid-template-columns:23px minmax(0,1fr) auto 17px}.ap-receipt-meta strong{text-align:right;font-size:12px;color:#15281b;overflow-wrap:anywhere}.ap-meta-icon{color:#2a7b39;font-size:19px;line-height:1}.ap-copy-id{font-size:19px;color:#24743a;line-height:1}.ap-status-pill{font-style:normal;background:#d5f0c9;border-radius:50px;padding:4px 10px;color:#225a28}.ap-status-pending{background:#f8eacb;color:#7e5514}
+.ap-section-heading{display:flex;align-items:center;gap:9px;margin-bottom:6px}.ap-section-heading h4{font:800 16px 'DM Sans',sans-serif;color:#132c1e;white-space:nowrap}.ap-section-heading i{height:1px;background:#d8dfd9;flex:1}.ap-basket-icon{font-size:22px;color:#27833b}
+.ap-product-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #e6e9e6}.ap-product-thumb{width:51px;height:51px;flex:none;border-radius:10px;background:#edf3e8;overflow:hidden}.ap-product-thumb .mini-foto,.ap-product-thumb .mini-fallback{width:100%;height:100%;object-fit:cover;display:grid;place-items:center}.ap-product-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.ap-product-copy strong{font-size:12.5px;color:#14261b}.ap-product-copy span{font-size:11.5px;color:#647168}.ap-product-subtotal{font-size:12.5px;white-space:nowrap}
+.ap-receipt-total{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:#e5f4dd;border-radius:12px;margin:14px 0 16px;color:#0c4825}.ap-receipt-total strong:first-child{font-size:13px}.ap-receipt-total strong:last-child{font-size:19px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ap-receipt-admin{display:flex;align-items:center;gap:16px;padding:1px 10px 15px}.ap-receipt-admin img{width:85px;height:85px;object-fit:contain;transform:rotate(-7deg)}.ap-receipt-admin>div{display:flex;flex-direction:column;gap:3px;border-left:1px solid #aac4ac;padding-left:16px}.ap-receipt-admin span{font-size:12px;color:#69766c}.ap-receipt-admin strong{font-size:16px}
+.ap-receipt-disclaimer{font-size:10px;color:#78827a;line-height:1.5;padding-bottom:14px;border-bottom:1px dashed #b7cbb8;margin:0 0 14px}.ap-receipt-actions{display:flex;gap:9px}.ap-receipt-actions button{padding:11px 10px;border-radius:10px;font-size:12px;font-weight:700}.ap-receipt-actions button:first-child{flex:1;border:1px solid #1a6434;color:#15532e;background:white}.ap-receipt-actions button:last-child{flex:.55;background:#145e32;color:#fff}.ap-receipt-payment{margin:12px 0;padding:12px;border-radius:12px;background:#f4f8f3}.ap-receipt-payment .qris-img{max-width:160px}.ap-receipt-payment label{font-size:12px}
+@media(max-width:520px){.ap-modern-overlay{padding:8px!important}.ap-modern-receipt{padding:18px 15px;max-height:calc(100dvh - 16px)!important;border-radius:16px}.ap-receipt-brand{gap:8px}.ap-brand-mark{width:55px;height:55px}.ap-brand-copy h2{font-size:21px}.ap-receipt-meta{padding:11px 9px}.ap-receipt-meta>div{font-size:11px;gap:4px}.ap-receipt-meta strong{font-size:10.5px}.ap-receipt-success h3{font-size:20px}}
+/* PATCH 23 NOV: modern receipt isolation and reliable portrait printing */
+@media screen {
+ body > .ap-modern-overlay {align-items:safe center!important; overflow-y:auto!important;}
+ body > .ap-modern-overlay .ap-modern-receipt {margin:auto!important; flex-shrink:0!important;}
+ .ap-receipt-actions button {display:flex;align-items:center;justify-content:center;gap:8px}
+ .ap-meta-icon {display:flex;align-items:center;justify-content:center}
+ .ap-copy-id {display:flex;align-items:center;justify-content:center}
+}
+/* Compact e-receipt: single scoped layout refinement (23 Nov) */
+@media screen {
+ body > .ap-modern-overlay .ap-modern-receipt {width:min(390px,calc(100vw - 20px))!important;padding:17px 19px 16px!important;border-radius:18px!important;}
+ .ap-modern-receipt .ap-receipt-brand {gap:10px;padding:3px 22px 11px 0;}
+ .ap-modern-receipt .ap-brand-mark,.ap-modern-receipt .ap-brand-mark img {width:42px;height:42px;}
+ .ap-modern-receipt .ap-brand-copy h2 {font-size:18px;line-height:1.15;margin:0 0 2px;}
+ .ap-modern-receipt .ap-brand-copy p {font-size:9px;line-height:1.35;margin:1px 0;}
+ .ap-modern-receipt .ap-receipt-success {padding:12px 0 13px;}
+ .ap-modern-receipt .ap-success-icon {width:44px;height:44px;font-size:29px;margin-bottom:8px;}
+ .ap-modern-receipt .ap-receipt-success h3 {font-size:19px;margin-bottom:3px;}
+ .ap-modern-receipt .ap-receipt-success p {font-size:10px;}
+ .ap-modern-receipt .ap-receipt-meta {padding:9px 11px;margin-bottom:13px;border-radius:12px;}
+ .ap-modern-receipt .ap-receipt-meta>div {min-height:29px;font-size:10.5px;grid-template-columns:18px minmax(0,1fr) auto;gap:6px;}
+ .ap-modern-receipt .ap-receipt-meta>div:first-child {grid-template-columns:18px minmax(0,1fr) auto 15px;}
+ .ap-modern-receipt .ap-receipt-meta strong {font-size:10.5px;}
+ .ap-modern-receipt .ap-meta-icon,.ap-modern-receipt .ap-copy-id {font-size:16px;}
+ .ap-modern-receipt .ap-section-heading {margin-bottom:3px;gap:7px;}
+ .ap-modern-receipt .ap-section-heading h4 {font-size:13px;}
+ .ap-modern-receipt .ap-basket-icon {font-size:17px;}
+ .ap-modern-receipt .ap-product-row {gap:9px;padding:8px 0;min-height:48px;}
+ .ap-modern-receipt .ap-product-thumb {width:36px;height:36px;border-radius:8px;}
+ .ap-modern-receipt .ap-product-copy {gap:2px;}
+ .ap-modern-receipt .ap-product-copy strong,.ap-modern-receipt .ap-product-subtotal {font-size:11px;}
+ .ap-modern-receipt .ap-product-copy span {font-size:10px;}
+ .ap-modern-receipt .ap-receipt-total {padding:10px 11px;margin:11px 0 12px;border-radius:10px;}
+ .ap-modern-receipt .ap-receipt-total strong:first-child {font-size:11px;}
+ .ap-modern-receipt .ap-receipt-total strong:last-child {font-size:16px;}
+ .ap-modern-receipt .ap-receipt-admin {gap:11px;padding:0 6px 10px;}
+ .ap-modern-receipt .ap-receipt-admin img {width:60px;height:60px;}
+ .ap-modern-receipt .ap-receipt-admin>div {padding-left:11px;}
+ .ap-modern-receipt .ap-receipt-admin span {font-size:10px;}
+ .ap-modern-receipt .ap-receipt-admin strong {font-size:13px;}
+ .ap-modern-receipt .ap-receipt-disclaimer {font-size:9px;padding-bottom:10px;margin-bottom:10px;}
+ .ap-modern-receipt .ap-receipt-actions button {padding:9px 7px;font-size:10.5px;}
+}
+
+/* Satu-satunya aturan cetak e-receipt aktif; nota lama sudah dihapus. */
+@media print {
+ @page {size:A4 portrait;margin:12mm}
+ html,body {height:auto!important;overflow:visible!important;background:#fff!important}
+ body > #root {display:none!important}
+ body > *:not(.ap-modern-overlay) {display:none!important}
+ body > .ap-modern-overlay {display:block!important;position:static!important;inset:auto!important;width:100%!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0!important;padding:0!important;background:#fff!important}
+ body > .ap-modern-overlay .ap-modern-receipt {display:block!important;position:static!important;width:100%!important;max-width:170mm!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0 auto!important;padding:4mm 6mm!important;border:0!important;border-radius:0!important;box-shadow:none!important;transform:none!important}
+ body > .ap-modern-overlay .ap-receipt-close,
+ body > .ap-modern-overlay .ap-receipt-actions {display:none!important}
+ body > .ap-modern-overlay .ap-receipt-meta,
+ body > .ap-modern-overlay .ap-product-row,
+ body > .ap-modern-overlay .ap-receipt-total,
+ body > .ap-modern-overlay .ap-receipt-admin {break-inside:avoid!important;page-break-inside:avoid!important}
+ body > .ap-modern-overlay .ap-receipt-meta,
+ body > .ap-modern-overlay .ap-receipt-total,
+ body > .ap-modern-overlay .ap-success-icon,
+ body > .ap-modern-overlay .ap-status-pill {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+
+/* Ikon status e-receipt: gagal dibedakan dari menunggu */
+.ap-modern-receipt .ap-failed-icon{background:#b94a48;color:#fff}
