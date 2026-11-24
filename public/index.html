@@ -291,7 +291,69 @@ function Akun({onLogin}){
 }
 
 
+
+function ApReceiptIcon({name,size=19}){
+ const common={fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round'};
+ const shapes={
+ receipt:<><path d="M5 3h14v18l-3-2-3 2-3-2-3 2-2-2z"/><path d="M9 8h6M9 12h6"/></>,
+ calendar:<><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></>,
+ card:<><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/></>,
+ shield:<><path d="M12 2 20 6v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="m9 12 2 2 4-4"/></>,
+ basket:<><path d="m5 10 4-7m10 7-4-7M3 10h18l-2 11H5zM9 14v4m6-4v4"/></>,
+ copy:<><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2"/></>,
+ printer:<><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6zM17 12h1"/></>
+ };
+ return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...common}>{shapes[name]}</svg>;
+}
+
+function BuktiPesanan({o,onClose,onRefresh,adminMode=false}){
+ const [nominal,setNominal]=useState(''),[deadline,setDeadline]=useState(null),[now,setNow]=useState(Date.now()),[busy,setBusy]=useState(false),[err,setErr]=useState('');
+ const pending=o.status==='menunggu';
+ useEffect(()=>{if(!deadline)return;const t=setInterval(()=>setNow(Date.now()),250);return()=>clearInterval(t)},[deadline]);
+ useEffect(()=>{if(adminMode||!pending||o.metode!=='qris')return;
+   if(!nominal||Number(nominal)!==o.total){setDeadline(null);api('/api/pesanan/'+encodeURIComponent(o.id)+'/qris-batal',{method:'POST'}).catch(()=>{});return;}
+   let cancel=false;api('/api/pesanan/'+encodeURIComponent(o.id)+'/qris-mulai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nominal:Number(nominal)})}).then(d=>{if(!cancel){setDeadline(Date.parse(d.qrisKedaluwarsa));setNow(Date.now());setErr('')}}).catch(e=>{if(!cancel)setErr(e.message)});return()=>{cancel=true};
+ },[nominal,o.id]);
+ useEffect(()=>{if(!deadline||now<deadline||busy||adminMode||Number(nominal)!==o.total)return;
+   setBusy(true);api('/api/pesanan/'+encodeURIComponent(o.id)+'/qris-selesai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nominal:Number(nominal)})}).then(()=>{onRefresh();onClose()}).catch(e=>setErr(e.message)).finally(()=>setBusy(false));
+ },[now,deadline]);
+  const paid=o.status==='lunas';
+  const completed=o.status==='selesai';
+  const processing=o.status==='diproses';
+  const failed=['ditolak','kadaluarsa'].includes(o.status);
+  const positive=paid||completed;
+  const metode=o.metode==='qris'?'QRIS':o.metode==='transfer'?'Transfer bank':'Bayar di toko';
+  const tanggal=o.dibuat?new Date(o.dibuat).toLocaleString('id-ID'):'-';
+  const statusLabel=completed?'Selesai':paid?'Lunas':String(o.status||'Menunggu').replaceAll('_',' ');
+  const receiptTitle=completed?'Pesanan Selesai':paid?'Pembayaran Berhasil':processing?'Pesanan Diproses':pending?'Menunggu Pembayaran':failed?'Transaksi Tidak Berhasil':'Detail Transaksi';
+  const receiptDescription=completed?'Terima kasih telah berbelanja di Anak Pertama':paid?'Terima kasih telah berbelanja di Anak Pertama':processing?'Pesanan sedang disiapkan oleh toko':pending?'Selesaikan pembayaran sesuai rincian pesanan':'Rincian pesanan Anak Pertama';
+  const salinId=()=>{if(navigator.clipboard)navigator.clipboard.writeText(String(o.id||''));};
+  return ReactDOM.createPortal(<div className="receipt-overlay ap-modern-overlay" role="dialog" aria-modal="true" aria-label="Bukti transaksi Anak Pertama">
+    <div className="ap-modern-receipt">
+      <button className="ap-receipt-close" type="button" onClick={onClose} aria-label="Tutup bukti transaksi">×</button>
+      <header className="ap-receipt-brand"><div className="ap-brand-mark"><img src={LOGO} alt="Logo Anak Pertama"/></div><div className="ap-brand-copy"><h2>Anak Pertama</h2><p>Toko Bumbu Dapur &amp; Rempah</p><p className="ap-brand-contact">Pasar Pecah Kulit, Jl. Mangga Besar IX, Jakarta Barat</p><p className="ap-brand-contact">WhatsApp: 0857-7079-7578</p></div></header>
+      <div className="ap-receipt-success"><div className={'ap-success-icon'+(positive?'':failed?' ap-failed-icon':' ap-pending-icon')}>{positive?'✓':processing?'↻':failed?'×':'⌛'}</div><h3>{receiptTitle}</h3><p>{receiptDescription}</p></div>
+      <section className="ap-receipt-meta" aria-label="Informasi transaksi">
+        <div><span className="ap-meta-icon"><ApReceiptIcon name="receipt"/></span><span>No. Transaksi</span><strong className="ap-id-value">{o.id}</strong><button type="button" className="ap-copy-id" onClick={salinId} title="Salin nomor transaksi" aria-label="Salin nomor transaksi"><ApReceiptIcon name="copy" size={17}/></button></div>
+        <div><span className="ap-meta-icon"><ApReceiptIcon name="calendar"/></span><span>Tanggal</span><strong>{tanggal}</strong></div>
+        <div><span className="ap-meta-icon"><ApReceiptIcon name="card"/></span><span>Metode Pembayaran</span><strong>{metode}</strong></div>
+        <div><span className="ap-meta-icon"><ApReceiptIcon name="shield"/></span><span>Status Pesanan</span><strong><em className={'ap-status-pill'+(positive?'':' ap-status-pending')}>{statusLabel}</em></strong></div>
+      </section>
+      <div className="ap-section-heading"><span className="ap-basket-icon"><ApReceiptIcon name="basket"/></span><h4>Detail Pesanan</h4><i/></div>
+      <div className="ap-product-list">{(o.items||[]).map((x,i)=><div className="ap-product-row" key={i}><div className="ap-product-thumb"><FotoMini p={x}/></div><div className="ap-product-copy"><strong>{x.nama}</strong><span>{x.qty} × {rp(Number(x.harga)||0)}</span></div><strong className="ap-product-subtotal">{rp((Number(x.harga)||0)*(Number(x.qty)||0))}</strong></div>)}</div>
+      <div className="ap-receipt-total"><strong>Total Pembayaran</strong><strong>{rp(Number(o.total)||0)}</strong></div>
+      {pending&&o.metode==='qris'&&!adminMode&&<div className="ap-receipt-payment"><img className="qris-img" src={QRIS_IMG} alt="QRIS Anak Pertama"/><label>Nominal pembayaran (Rp)<input type="text" inputMode="numeric" placeholder="Masukkan nominal sesuai tagihan" value={nominal} onChange={e=>setNominal(e.target.value.replace(/\D/g,''))}/></label><small>{deadline?'Nominal sesuai. Proses otomatis sedang berjalan.':'Proses dimulai setelah nominal sesuai.'}</small></div>}
+      {pending&&o.metode==='transfer'&&<div className="ap-receipt-payment rek"><b>{o.rekening?.bank||o.bank||'Bank'}</b><div className="no">{o.rekening?.no||'-'}</div><p>a.n. {o.rekening?.nama||'-'}</p><button className="btn kecil putih" onClick={()=>navigator.clipboard?.writeText(o.rekening?.no||'')}>Salin rekening</button></div>}
+      {err&&<p className="err">{err}</p>}
+      <div className="ap-receipt-admin"><img src="/cap-anak-pertama.png" alt="Cap Anak Pertama" onError={e=>{e.currentTarget.style.display='none'}}/><div><span>Admin</span><strong>{o.adminNama||'-'}</strong></div></div>
+      <p className="ap-receipt-disclaimer">Status pembayaran dicatat oleh sistem toko dan bukan konfirmasi mutasi bank. Untuk kendala pesanan, hubungi toko dengan menyebut nomor transaksi.</p>
+      <div className="ap-receipt-actions"><button type="button" onClick={()=>window.print()}><ApReceiptIcon name="printer" size={18}/> Cetak Bukti Transaksi</button><button type="button" onClick={onClose}>Tutup</button></div>
+    </div>
+  </div>,document.body);
+}
+
 function Riwayat(){
+  const [receipt,setReceipt]=useState(null);
   const [list,setList]=useState([]),[err,setErr]=useState(''),[loading,setLoading]=useState(true),[info,setInfo]=useState('');
   const refresh=()=>{setLoading(true);setInfo('');api('/api/riwayat').then(rows=>{setList(rows);setErr('');setInfo('Data pesanan sudah diperbarui.')}).catch(e=>setErr(e.message)).finally(()=>setLoading(false))};
   useEffect(refresh,[]);
@@ -299,25 +361,28 @@ function Riwayat(){
     <div className="dashboard-heading"><div><span className="dashboard-kicker">AKUN PELANGGAN</span><h2>Pesanan Saya</h2><p>Lihat ringkasan dan perkembangan pesananmu di sini.</p></div><button className="btn kecil putih" disabled={loading} onClick={refresh}>{loading?"Memuat...":"Muat Ulang Pesanan"}</button></div>
     <div className="dashboard-stats"><div className="dashboard-stat"><span>Total Pesanan</span><strong>{list.length}</strong></div><div className="dashboard-stat"><span>Sedang Diproses</span><strong>{list.filter(o=>['menunggu','menunggu_verifikasi','lunas','diproses'].includes(o.status)).length}</strong></div><div className="dashboard-stat"><span>Selesai</span><strong>{list.filter(o=>o.status==='selesai').length}</strong></div></div>
     {err&&<p className="err" role="alert">{err}</p>}{!loading&&info&&<p className="refresh-info" role="status">{info}</p>}
-    {loading?<div className="dashboard-empty">Memuat pesanan...</div>:!list.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan yang kamu buat akan tampil di halaman ini.</p></div>:<div className="dashboard-list">{list.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><div className="dashboard-order-bottom"><span>Simulasi transaksi</span><strong>{rp(o.total)}</strong></div></article>)}</div>}
+    {loading?<div className="dashboard-empty">Memuat pesanan...</div>:!list.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan yang kamu buat akan tampil di halaman ini.</p></div>:<div className="dashboard-list">{list.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><div className="dashboard-order-bottom"><span>Total pembayaran</span><strong>{rp(o.total)}</strong></div><button className="btn kecil putih" onClick={()=>setReceipt(o)}>{['menunggu','menunggu_verifikasi'].includes(o.status)?'Detail Pembayaran':'Lihat E-Receipt'}</button></article>)}</div>}
+    {receipt&&<BuktiPesanan o={receipt} onClose={()=>setReceipt(null)} onRefresh={refresh}/> }
   </div></section>;
 }
 
 function AdminPanel(){
-  const [orders,setOrders]=useState([]),[produk,setProduk]=useState([]),[err,setErr]=useState(''),[loading,setLoading]=useState(true),[tab,setTab]=useState('pesanan'),[form,setForm]=useState({nama:'',harga:'',sat:''}),[fotoBaru,setFotoBaru]=useState(null),[preview,setPreview]=useState(''),[saving,setSaving]=useState(false),[info,setInfo]=useState('');
+  const [orders,setOrders]=useState([]),[produk,setProduk]=useState([]),[err,setErr]=useState(''),[loading,setLoading]=useState(true),[tab,setTab]=useState('pesanan'),[form,setForm]=useState({nama:'',harga:'',sat:''}),[fotoBaru,setFotoBaru]=useState(null),[preview,setPreview]=useState(''),[saving,setSaving]=useState(false),[info,setInfo]=useState(''),[receipt,setReceipt]=useState(null);
   const refresh=()=>{setLoading(true);Promise.all([api('/api/admin/pesanan'),api('/api/admin/produk')]).then(([a,b])=>{setOrders(a);setProduk(b);setErr('');setInfo('Data admin sudah diperbarui.')}).catch(e=>setErr(e.message)).finally(()=>setLoading(false))};
   useEffect(refresh,[]);
+  const ambil=async(id)=>{try{await api('/api/admin/pesanan/'+encodeURIComponent(id)+'/ambil',{method:'POST'});refresh()}catch(e){setErr(e.message)}};
   const status=async(id,value)=>{try{await api('/api/admin/pesanan/'+encodeURIComponent(id)+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:value})});refresh()}catch(e){setErr(e.message)}};
   const unggahFoto=async file=>{const fd=new FormData();fd.append('foto',file);const hasil=await api('/api/admin/upload-foto',{method:'POST',body:fd});return hasil.foto};
   const edit=async(item,method,file=null)=>{if(saving)return;try{setSaving(true);setErr('');let data={...item};if(file)data.foto=await unggahFoto(file);await api('/api/admin/produk'+(item.id?'/'+item.id:''),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(method==='POST'){setForm({nama:'',harga:'',sat:''});setFotoBaru(null);setPreview('')}setInfo('Produk berhasil disimpan.');refresh()}catch(e){setErr(e.message)}finally{setSaving(false)}};
   const pilihFoto=file=>{setFotoBaru(file||null);if(!file){setPreview('');return;}if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){setErr('Pilih foto JPG, PNG, atau WEBP maksimal 5 MB.');setFotoBaru(null);setPreview('');return;}setErr('');const r=new FileReader();r.onload=()=>setPreview(String(r.result));r.readAsDataURL(file)};
   return <section className="bag dashboard-page"><div className="wrap">
-    <div className="dashboard-heading"><div><span className="dashboard-kicker">PENGELOLA TOKO</span><h2>Dashboard Admin</h2><p>Kelola pesanan dan katalog Anak Pertama dari satu tempat.</p></div><button className="btn kecil putih" disabled={loading} onClick={refresh}>{loading?"Memuat...":"Perbarui Data"}</button></div>
+    <div className="dashboard-heading"><div><span className="dashboard-kicker">PENGELOLA TOKO</span><h2>Dashboard Admin</h2><p>Nama admin tercatat saat mengambil atau memproses pesanan. Kelola pesanan dan katalog Anak Pertama dari satu tempat.</p></div><button className="btn kecil putih" disabled={loading} onClick={refresh}>{loading?"Memuat...":"Perbarui Data"}</button></div>
     <div className="dashboard-stats"><div className="dashboard-stat"><span>Total Pesanan</span><strong>{orders.length}</strong></div><div className="dashboard-stat"><span>Perlu Ditinjau</span><strong>{orders.filter(o=>['menunggu','menunggu_verifikasi'].includes(o.status)).length}</strong></div><div className="dashboard-stat"><span>Total Produk</span><strong>{produk.length}</strong></div></div>
     <div className="dashboard-tabs" role="tablist" aria-label="Menu admin"><button role="tab" aria-selected={tab==='pesanan'} className={tab==='pesanan'?'active':''} onClick={()=>setTab('pesanan')}>Pesanan ({orders.length})</button><button role="tab" aria-selected={tab==='produk'} className={tab==='produk'?'active':''} onClick={()=>setTab('produk')}>Kelola Produk ({produk.length})</button></div>
     {err&&<p className="err" role="alert">{err}</p>}{!loading&&info&&<p className="refresh-info" role="status">{info}</p>}
     {loading&&<div className="dashboard-empty">Memuat data...</div>}
-    {!loading&&tab==='pesanan'&&(!orders.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan pelanggan akan muncul di sini.</p></div>:<div className="dashboard-list">{orders.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong><p>{o.nama} · {o.hp}</p></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><div className="dashboard-order-bottom"><div><small>{o.alamat} · {o.metode}</small><strong>{rp(o.total)}</strong></div><div className="dashboard-order-actions"><label htmlFor={'status-'+o.id}>Ubah status</label><select id={'status-'+o.id} value={o.status} onChange={e=>status(o.id,e.target.value)}>{['menunggu','menunggu_verifikasi','lunas','diproses','selesai','ditolak','kadaluarsa'].map(x=><option key={x} value={x}>{x.replaceAll('_',' ')}</option>)}</select>{o.bukti&&<button className="btn kecil putih" onClick={async()=>{try{const r=await fetch('/api/admin/bukti/'+encodeURIComponent(o.id),{headers:{Authorization:'Bearer '+sessionStorage.getItem('ap_token')}});if(!r.ok)throw Error('Bukti tidak ditemukan');const u=URL.createObjectURL(await r.blob());window.open(u,'_blank');setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){setErr(e.message)}}}>Lihat Bukti</button>}</div></div></article>)}</div>)}
+    {!loading&&tab==='pesanan'&&(!orders.length?<div className="dashboard-empty"><h3>Belum ada pesanan</h3><p>Pesanan pelanggan akan muncul di sini.</p></div>:<div className="dashboard-list">{orders.map(o=><article className="dashboard-order" key={o.id}><div className="dashboard-order-top"><div><small>Kode pesanan</small><strong>{o.id}</strong><p>{o.nama} · {o.hp}</p></div><span className="dashboard-status">{String(o.status||'menunggu').replaceAll('_',' ')}</span></div><p>{(o.items||[]).map(x=>x.nama+' ×'+x.qty).join(', ')}</p><p><b>Admin:</b> {o.adminNama||"-"}</p><div className="dashboard-order-bottom"><div><small>{o.alamat} · {o.metode}</small><strong>{rp(o.total)}</strong></div><div className="dashboard-order-actions"><button className="btn kecil putih" onClick={()=>setReceipt(o)}>{["menunggu","menunggu_verifikasi"].includes(o.status)?"Detail Pesanan":"Lihat E-Receipt"}</button>{!o.adminNama&&<button className="btn kecil" onClick={()=>ambil(o.id)}>Ambil Pesanan</button>}<label htmlFor={'status-'+o.id}>Ubah status</label><select id={'status-'+o.id} value={o.status} onChange={e=>status(o.id,e.target.value)}>{['menunggu','menunggu_verifikasi','lunas','diproses','selesai','ditolak','kadaluarsa'].map(x=><option key={x} value={x}>{x.replaceAll('_',' ')}</option>)}</select>{o.bukti&&<button className="btn kecil putih" onClick={async()=>{try{const r=await fetch('/api/admin/bukti/'+encodeURIComponent(o.id),{headers:{Authorization:'Bearer '+sessionStorage.getItem('ap_token')}});if(!r.ok)throw Error('Bukti tidak ditemukan');const u=URL.createObjectURL(await r.blob());window.open(u,'_blank');setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){setErr(e.message)}}}>Lihat Bukti</button>}</div></div></article>)}</div>)}
+    {receipt&&<BuktiPesanan o={receipt} adminMode onClose={()=>setReceipt(null)} onRefresh={refresh}/>}
     {!loading&&tab==='produk'&&<><div className="dashboard-product-form"><h3>Tambah Produk</h3><div className="dashboard-fields"><label>Nama produk<input placeholder="Contoh: Cabai Merah" value={form.nama} onChange={e=>setForm({...form,nama:e.target.value})}/></label><label>Harga (Rp)<input placeholder="12000" type="number" min="0" value={form.harga} onChange={e=>setForm({...form,harga:e.target.value})}/></label><label>Satuan<input placeholder="250g" value={form.sat} onChange={e=>setForm({...form,sat:e.target.value})}/></label></div><label className="foto-input-label">Foto produk (JPG/PNG/WEBP, maks. 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>pilihFoto(e.target.files[0])}/></label>{preview&&<img className="foto-preview" src={preview} alt="Pratinjau foto produk"/>}<button className="btn kecil" disabled={saving||!form.nama.trim()||!form.harga||!form.sat.trim()} onClick={()=>edit(form,'POST',fotoBaru)}>{saving?'Menyimpan...':'+ Tambah Produk'}</button></div><div className="dashboard-list">{produk.map(p=><article className="dashboard-product" key={p.id}><div className="dashboard-product-info"><FotoMini p={p}/><div><strong>{p.nama}</strong><p>{rp(p.harga)} / {p.sat}</p></div></div><div className="dashboard-product-actions"><button className="btn kecil putih" onClick={()=>{const nama=prompt('Nama',p.nama),harga=prompt('Harga',p.harga),sat=prompt('Satuan',p.sat);if(nama&&harga&&sat)edit({...p,nama,harga,sat},'PUT')}}>Edit</button><label className="btn kecil putih upload-edit">Ganti Foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const file=e.target.files[0];if(file)edit(p,'PUT',file);e.target.value=''}}/></label><button className="btn kecil putih" onClick={()=>{if(confirm('Hapus produk ini?'))api('/api/admin/produk/'+p.id,{method:'DELETE'}).then(refresh).catch(e=>setErr(e.message))}}>Hapus</button></div></article>)}</div></>}
   </div></section>;
 }
@@ -330,20 +395,53 @@ function Checkout({cart,total,selesai,go,user}){
   const [bankPengirim,setBankPengirim]=useState("BCA");
   const [namaBankLain,setNamaBankLain]=useState("");
   const kode=0;
+  const [qrisDeadline,setQrisDeadline]=useState(null);
+  const [qrisNow,setQrisNow]=useState(Date.now());
+  const [qrisBusy,setQrisBusy]=useState(false);
+  const qrisSisa=qrisDeadline?Math.max(0,Math.ceil((qrisDeadline-qrisNow)/1000)):60;
   const [err,setErr]=useState("");const [pesananTertunda,setPesananTertunda]=useState(null);const [hasil,setHasil]=useState(null);const [salin,setSalin]=useState(false);const [proses,setProses]=useState(false);
   const set=(k,v)=>setF(o=>({...o,[k]:v}));
   const bayar=f.metode==="transfer"?total+kode:total;
   const rek=REKENING[f.bank];
   const copy=t=>{navigator.clipboard&&navigator.clipboard.writeText(t);setSalin(true);setTimeout(()=>setSalin(false),1500)};
 
+  useEffect(()=>{if(tahap!=="simulasi"||f.metode!=="qris"||!qrisDeadline)return;
+    const id=setInterval(()=>setQrisNow(Date.now()),250);return()=>clearInterval(id);
+  },[tahap,f.metode,qrisDeadline]);
+  useEffect(()=>{if(tahap!=="simulasi"||f.metode!=="qris"||!pesananTertunda||hasil)return;
+    if(Number(nominal)!==pesananTertunda.total||!nominal){
+      setQrisDeadline(null);
+      api('/api/pesanan/'+encodeURIComponent(pesananTertunda.id)+'/qris-batal',{method:'POST'}).catch(()=>{});
+      return;
+    }
+    let cancelled=false;
+    api('/api/pesanan/'+encodeURIComponent(pesananTertunda.id)+'/qris-mulai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nominal:Number(nominal)})})
+      .then(d=>{if(!cancelled){setQrisDeadline(Date.parse(d.qrisKedaluwarsa));setQrisNow(Date.now());setErr('')}})
+      .catch(e=>{if(!cancelled)setErr(e.message)});
+    return()=>{cancelled=true};
+  },[nominal,tahap,pesananTertunda?.id]);
+  useEffect(()=>{if(tahap!=="simulasi"||f.metode!=="qris"||!qrisDeadline||qrisSisa!==0||qrisBusy||hasil||Number(nominal)!==pesananTertunda?.total)return;
+    setQrisBusy(true);
+    api('/api/pesanan/'+encodeURIComponent(pesananTertunda.id)+'/qris-selesai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nominal:Number(nominal)})})
+      .then(d=>{setHasil({id:d.id,nama:f.nama,metode:'QRIS',total:d.total,status:d.status});selesai();})
+      .catch(e=>setErr(e.message)).finally(()=>setQrisBusy(false));
+  },[qrisSisa,tahap,f.metode,qrisDeadline]);
+  const mulaiQris=async()=>{
+    if(!f.nama.trim()||!f.hp.trim()){setErr('Isi nama dan nomor HP terlebih dahulu.');return}
+    setProses(true);setErr('');
+    try{const d=await api(ENDPOINT_PESANAN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nama:f.nama,hp:f.hp,alamat:f.alamat,catatan:f.catatan,metode:'qris',items:cart.map(c=>({id:c.id,qty:c.qty}))})});
+      setPesananTertunda(d);setQrisDeadline(null);setQrisNow(Date.now());setNominal('');setTahap('simulasi');window.scrollTo(0,0);
+    }catch(e){setErr(e.message)}finally{setProses(false)}
+  };
   const lanjutSimulasi=()=>{
+    if(f.metode==='qris'){mulaiQris();return;}
     if(!f.nama.trim()||!f.hp.trim()){setErr("Isi nama dan nomor HP terlebih dahulu.");return}
     setErr("");setNominal("");setRekeningPengirim("");setTahap("simulasi");window.scrollTo(0,0);
   };
   const kirim=async()=>{
     if(proses)return;
     if(f.metode==="qris" && (!/^\d+$/.test(nominal.trim()) || Number(nominal)!==bayar)){
-      setErr("Nominal simulasi QRIS harus sama dengan total tagihan, yaitu "+rp(bayar)+".");return;
+      setErr("Nominal QRIS harus sama dengan total tagihan, yaitu "+rp(bayar)+".");return;
     }
     const panjangRekening=bankPengirim==="BCA"?10:bankPengirim==="Mandiri"?13:null;
     if(f.metode==="transfer" && bankPengirim==="Bank lain" && !namaBankLain.trim()){
@@ -351,7 +449,7 @@ function Checkout({cart,total,selesai,go,user}){
     }
     const formatRekening=panjangRekening?new RegExp("^\\d{"+panjangRekening+"}$"): /^\d{8,20}$/;
     if(f.metode==="transfer" && !formatRekening.test(rekeningPengirim.trim())){
-      setErr(panjangRekening?"Nomor rekening pengirim "+bankPengirim+" harus "+panjangRekening+" digit angka (simulasi).":"Untuk Bank lain, isi 8–20 digit nomor rekening contoh. Panjang sebenarnya berbeda antarbank.");return;
+      setErr(panjangRekening?"Nomor rekening pengirim "+bankPengirim+" harus "+panjangRekening+" digit angka.":"Untuk Bank lain, isi 8–20 digit nomor rekening contoh. Panjang sebenarnya berbeda antarbank.");return;
     }
     if(!f.nama.trim()||!f.hp.trim()){setErr("Isi nama dan nomor HP terlebih dahulu.");return}
     setErr("");setProses(true);
@@ -373,10 +471,10 @@ if(hasil)return (
     <div className="wrap sukses">
       <img src={LOGO} alt="Logo Anak Pertama" width="90"/>
 
-      <h2>Transaksi Berhasil!</h2>
+      <h2>{hasil.status==='lunas'?'Pembayaran Berhasil!':'Pesanan Berhasil Dicatat'}</h2>
 
       <p style={{marginTop:12}}>
-        Pesanan Anda berhasil dicatat melalui simulasi transaksi
+        Pesanan Anda berhasil dicatat
         website Anak Pertama.
       </p>
 
@@ -389,11 +487,12 @@ if(hasil)return (
         <p>Nama Pembeli: <b>{hasil.nama}</b></p>
         <p>Metode Pembayaran: <b>{hasil.metode}</b></p>
         <p>Total Transaksi: <b>{rp(hasil.total)}</b></p>
-        <p>Status simulasi: <b>Berhasil</b></p>
+        <p>Status Transaksi: <b>{hasil.status==='lunas'?'Berhasil':hasil.status}</b></p>
       </div>
 
+      <p className="receipt-note">Bukti transaksi tersedia di menu Pesanan Saya.</p>
       <p style={{fontSize:13,color:"#6B776D"}}>
-        Ini adalah simulasi untuk keperluan Penulisan Ilmiah; bukan konfirmasi penerimaan dana yang sebenarnya.
+        Terima Kasih sudah berbelanja, mohon tunggu pesanannya.
       </p>
 
       <button
@@ -408,41 +507,44 @@ if(hasil)return (
 );
 
   if(tahap==="simulasi")return <section className="bag"><div className="wrap simulasi-wrap">
-    <div className="simulasi-heading"><span className="simulasi-step">LANGKAH 2 DARI 2</span><h2>Simulasi Pembayaran</h2>
-      <p>Ini hanya demonstrasi untuk Penulisan Ilmiah. Tidak ada dana yang dipindahkan atau pembayaran nyata yang diverifikasi.</p></div>
+    <div className="simulasi-heading"><span className="step">LANGKAH 2 DARI 2</span><h2> Pembayaran</h2>
+      <p>Periksa total tagihan dan metode pembayaran Anda.</p></div>
     <div className="panel simulasi-panel">
       <div className="simulasi-total"><span>Total tagihan</span><strong>{rp(bayar)}</strong></div>
       <p className="simulasi-metode">Metode: <b>{f.metode==="qris"?"QRIS":f.metode==="transfer"?"Transfer "+rek.bank:"Bayar di toko"}</b></p>
       {f.metode==="qris"&&<>
-        <div className="simulasi-qris-box">
+        <div className="qris-box">
           <strong>QRIS Anak Pertama</strong>
-          <img className="simulasi-qris-img" src={QRIS_IMG} alt="QRIS toko Anak Pertama"/>
-          <p>Contoh tampilan QRIS. Untuk simulasi ini, jangan pindai atau kirim uang sungguhan.</p>
+          <img className="qris-img" src={QRIS_IMG} alt="Kode QRIS Anak Pertama"/>
+          <p className="receipt-note">Masukkan nominal sesuai total tagihan untuk melanjutkan proses pembayaran.</p>
+          <p>{qrisDeadline?'Nominal sesuai. Pembayaran sedang diproses secara otomatis.':'Proses otomatis dimulai setelah nominal sesuai.'}</p>
         </div>
-        <label htmlFor="nominal-simulasi">Nominal pembayaran simulasi (Rp)</label>
-        <input id="nominal-simulasi" type="text" inputMode="numeric" autoComplete="off" placeholder="Masukkan nominal sesuai tagihan" value={nominal} onChange={e=>setNominal(e.target.value.replace(/\D/g,""))}/>
+        <label htmlFor="nominal">Nominal pembayaran (Rp)</label>
+        <input id="nominal" type="text" inputMode="numeric" autoComplete="off" placeholder="Masukkan nominal sesuai tagihan" value={nominal} onChange={e=>setNominal(e.target.value.replace(/\D/g,""))}/>
         <small>Nominal harus sama dengan {rp(bayar)}.</small>
       </>}
       {f.metode==="transfer"&&<>
-        <div className="simulasi-rekening-tujuan">
+        <label>Pilih bank tujuan</label>
+        <div className="pilih" style={{marginBottom:12}}>{REKENING.map((r,i)=><button type="button" key={r.bank} className={f.bank===i?"on":""} onClick={()=>set("bank",i)}>{r.bank}</button>)}</div>
+        <div className="rekening-tujuan">
           <span>Rekening tujuan (toko)</span>
           <strong>{rek.bank} · {rek.no}</strong>
           <small>Atas nama {rek.nama}</small>
-          <b>Nominal transfer simulasi: {rp(bayar)}</b>
+          <b>Nominal transfer: {rp(bayar)}</b>
         </div>
-        <label htmlFor="bank-pengirim">Bank pengirim (simulasi)</label>
+        <label htmlFor="bank-pengirim">Bank pengirim </label>
         <select id="bank-pengirim" value={bankPengirim} onChange={e=>{setBankPengirim(e.target.value);setRekeningPengirim("")}}>
           <option value="BCA">BCA</option><option value="Mandiri">Mandiri</option><option value="Bank lain">Bank lain</option>
         </select>
         {bankPengirim==="Bank lain"&&<><label htmlFor="nama-bank-lain">Nama bank pengirim</label><input id="nama-bank-lain" type="text" placeholder="Contoh: BRI, BNI, CIMB Niaga" value={namaBankLain} maxLength={40} onChange={e=>setNamaBankLain(e.target.value)}/></>}
-        <label htmlFor="rekening-simulasi">Nomor rekening pengirim (simulasi)</label>
-        <input id="rekening-simulasi" type="text" inputMode="numeric" autoComplete="off" placeholder={bankPengirim==="BCA"?"10 digit nomor contoh":bankPengirim==="Mandiri"?"13 digit nomor contoh":"8–20 digit nomor contoh"} value={rekeningPengirim} maxLength={bankPengirim==="BCA"?10:bankPengirim==="Mandiri"?13:20} onChange={e=>setRekeningPengirim(e.target.value.replace(/\D/g,""))}/>
-        <small>Gunakan nomor contoh, bukan nomor rekening asli. Tidak perlu PIN, OTP, atau unggah bukti.</small>
+        <label htmlFor="rekening">Nomor rekening pengirim </label>
+        <input id="rekening" type="text" inputMode="numeric" autoComplete="off" placeholder={bankPengirim==="BCA"?"10 digit nomor contoh":bankPengirim==="Mandiri"?"13 digit nomor contoh":"8–20 digit nomor contoh"} value={rekeningPengirim} maxLength={bankPengirim==="BCA"?10:bankPengirim==="Mandiri"?13:20} onChange={e=>setRekeningPengirim(e.target.value.replace(/\D/g,""))}/>
+        <small>Masukkan nomor rekening</small>
       </>}
-      {f.metode==="toko"&&<p className="simulasi-info">Pesanan akan dicatat sebagai simulasi. Pembayaran di toko tidak diproses secara online.</p>}
+      {f.metode==="toko"&&<p className="simulasi-info">Pesanan akan dicatat. Pembayaran di toko tidak diproses secara online.</p>}
       {err&&<p className="err" role="alert">{err}</p>}
-      <div className="simulasi-actions"><button type="button" className="btn kecil putih" disabled={proses} onClick={()=>{setErr("");setTahap("checkout")}}>Kembali</button>
-        <button type="button" className="btn hijau" disabled={proses} onClick={kirim}>{proses?"Menyimpan pesanan…":"Selesaikan Simulasi"}</button></div>
+      <div className="actions"><button type="button" className="btn kecil putih" disabled={proses} onClick={()=>{setErr("");setTahap("checkout")}}>Kembali</button>
+        {f.metode!=="qris"&&<button type="button" className="btn hijau" disabled={proses} onClick={kirim}>{proses?"Menyimpan pesanan…":"Selesaikan Pembayaran"}</button>}</div>
     </div>
   </div></section>;
 
@@ -458,15 +560,7 @@ if(hasil)return (
         <label>Catatan</label><textarea value={f.catatan} onChange={e=>set("catatan",e.target.value)}/></div>
       <div className="panel"><h3>Pembayaran</h3>
         <div className="pilih">{[["transfer","Transfer bank"],["qris","QRIS"],["toko","Bayar di toko"]].map(([k,l])=><button key={k} className={f.metode===k?"on":""} onClick={()=>set("metode",k)}>{l}</button>)}</div>
-        {f.metode==="transfer"&&<>
-          <div className="pilih" style={{marginTop:12}}>{REKENING.map((r,i)=><button key={r.bank} className={f.bank===i?"on":""} onClick={()=>set("bank",i)}>{r.bank}</button>)}</div>
-          <div className="rek"><small>Total simulasi transfer</small><div className="no">{rp(bayar)}</div>
-            <small>ke {rek.bank} a.n. {rek.nama}</small><div className="no">{rek.no}</div>
-            <button className="btn kecil putih" onClick={()=>copy(rek.no)}>{salin?"Tersalin":"Salin no. rekening"}</button></div>
-</>}
-        {f.metode==="qris"&&<><img className="qris" src={QRIS_IMG} alt="Kode QRIS toko"/><p style={{textAlign:"center"}}>QRIS ditampilkan sebagai contoh. Jangan melakukan pembayaran sungguhan. Nominal simulasi <b>{rp(bayar)}</b>.</p>
-</>}
-        {f.metode==="toko"&&<p style={{marginTop:12}}>Bayar tunai saat mengambil pesanan di {TOKO.alamat}.</p>}
+        <p className="metode-hint">Detail pembayaran akan ditampilkan setelah Anda menekan Lanjut ke Pembayaran.</p>
       </div></div>
       <div className="panel" style={{position:"sticky",top:90}}><h3>Ringkasan</h3>
         {cart.map(c=><div className="ring ring-produk" key={c.id}><FotoMini p={PRODUK.find(p=>p.id===c.id)||c}/><div className="ring-produk-info"><strong>{c.nama}</strong><small>{c.qty} × {rp(c.harga)}</small></div><strong>{rp(c.harga*c.qty)}</strong></div>)}
@@ -474,7 +568,7 @@ if(hasil)return (
         <div className="ring t"><span>Total bayar</span><span>{rp(bayar)}</span></div>
         {err&&<p className="err" role="alert">{err}</p>}
         <button className="btn hijau" style={{width:"100%",marginTop:16}} disabled={proses} onClick={lanjutSimulasi}>
-{"Lanjut ke Simulasi Pembayaran"}
+{"Lanjut ke Pembayaran"}
 </button></div>
     </div></div></section>;
 }
